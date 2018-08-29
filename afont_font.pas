@@ -3,7 +3,7 @@
 *   Create a binary .FONT file from and ASCII .AFONT file.
 }
 program afont_font;
-%include '(cog)lib/base.ins.pas';
+%include 'base.ins.pas';
 
 const
   max_font_size = 100000;              {max number of entries in font array}
@@ -193,5 +193,4 @@ err_at_line:                           {error at specific input file line number
 abort:                                 {abort while input file open}
   file_close (conn);                   {close the file}
   sys_bomb;
-  return;
   end.
