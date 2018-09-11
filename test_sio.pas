@@ -27,7 +27,9 @@ var
   p: string_index_t;                   {BUF parse index}
   quit: boolean;                       {TRUE when trying to exit the program}
   newline: boolean;                    {STDOUT stream is at start of new line}
-
+  usb: boolean;                        {connection is over USB, not serial line}
+  usbname:                             {specific name of USB device}
+    %include '(cog)lib/string80.ins.pas';
   i1: sys_int_machine_t;               {integer command parameters}
 
   opt:                                 {upcased command line option}
@@ -40,7 +42,7 @@ var
   stat: sys_err_t;                     {completion status code}
 
 label
-  next_opt, err_parm, parm_bad, done_opts,
+  done_test_sio, next_opt, err_parm, parm_bad, done_opts,
   loop_iline, loop_hex, tkline, loop_tk,
   done_cmd, err_cmparm, leave;
 {
@@ -241,15 +243,30 @@ function ibyte                         {return next byte from remote system}
 
 var
   buf: string_var4_t;                  {raw bytes input buffer}
+  olen: sys_int_adr_t;                 {number of bytes actually received}
   stat: sys_err_t;                     {completion status}
 
 begin
   buf.max := 1;                        {allow only single byte to be read at a time}
-  file_read_sio_rec (conn, buf, stat); {read next byte from serial line}
+
+  if usb
+    then begin                         {connected via USB}
+      file_read_embusb (               {read next byte from USB device}
+        conn,                          {connection to the device}
+        buf.max,                       {maximum number of bytes to read}
+        buf.str,                       {buffer to receive the byte into}
+        olen,                          {number of bytes actually received}
+        stat);
+      end
+    else begin                         {connected via serial line}
+      file_read_sio_rec (conn, buf, stat); {read next byte from serial line}
+      end
+    ;
   if quit then begin                   {trying to exit the program ?}
     sys_thread_exit;
     end;
   sys_error_abort (stat, '', '', nil, 0);
+
   ibyte := ord(buf.str[1]);
   end;
 {
@@ -278,6 +295,92 @@ loop:                                  {back here each new response opcode}
 {
 ****************************************************************************
 *
+*   Subroutine CONNECT_SIO
+*
+*   Connect to the remote device over a serial line.
+}
+procedure connect_sio;
+  val_param; internal;
+
+begin
+  file_open_sio (                      {open connection to the serial line}
+    sio,                               {number of serial line to use}
+    baud,                              {baud rate ID}
+    conf,                              {additional configuration options}
+    conn,                              {returned connection to the serial line}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  file_sio_set_eor_read (conn, '', 0); {no special input end of record sequence}
+  file_sio_set_eor_write (conn, '', 0); {no special output end of record sequence}
+
+  usb := false;                        {indicate not connected via USB}
+  end;
+{
+****************************************************************************
+*
+*   Subroutine CONNECT_USB
+*
+*   Connect to the remote device via USB.
+}
+procedure connect_usb;
+  val_param; internal;
+
+var
+  list: file_usbdev_list_t;            {list of Embed USB devices}
+  dev_p: file_usbdev_p_t;              {pointer to current USB devices list entry}
+  stat: sys_err_t;                     {completion status}
+
+begin
+  if usbname.len > 0                   {connect to a specific USB device ?}
+{
+*   Check for connecting to a specific USB device.  In this case, it can be
+*   any Embed USB device.
+}
+    then begin
+      file_embusb_list_get (           {get list of all Embed USB devices}
+        0,                             {allow any VID/PID}
+        util_top_mem_context,          {parent memory context to create list within}
+        list,                          {the returned list}
+        stat);
+      sys_error_abort (stat, '', '', nil, 0);
+
+      dev_p := list.list_p;            {point to first device in list}
+      while true do begin              {look for the specific device in the list}
+        if dev_p = nil then begin      {exhausted the list ?}
+          writeln ('Embed USB device "', usbname.str:usbname.len, '" not found.');
+          sys_bomb;
+          end;
+        if string_equal (dev_p^.name, usbname) then exit; {found matching device ?}
+        dev_p := dev_p^.next_p;        {advance to next list entry}
+        end;                           {back to check this new list entry}
+
+      file_open_embusb (               {open connection to the USB device}
+        dev_p^.vidpid,                 {VID/PID of the device}
+        dev_p^.name,                   {Embed USB device name}
+        conn,                          {returned connection to the device}
+        stat);
+      sys_error_abort (stat, '', '', nil, 0);
+
+      file_usbdev_list_del (list);     {deallocate the USB devices list}
+      end                              {end of specific name case}
+{
+*   No specific name was given.  Connect to any Embed 10 USB device.
+}
+    else begin
+      file_open_embusb (               {open connection to the USB device}
+        file_usbid (5824, 1489),       {VID/PID of Embed USB device 10}
+        usbname,                       {name, is blank, allow any}
+        conn,                          {returned connection to the device}
+        stat);
+      sys_error_abort (stat, '', '', nil, 0);
+      end                              {end of no specific name case}
+    ;
+
+  usb := true;                         {indicate connected via USB}
+  end;
+{
+****************************************************************************
+*
 *   Start of main routine.
 }
 begin
@@ -287,8 +390,9 @@ begin
   string_cmline_init;                  {init for reading the command line}
   baud := def_baud_k;                  {init to default baud rate}
   conf := [];                          {init configuration options to default}
-
+  usb := false;                        {init to using serial line, not USB}
   sio := 1;                            {init to default serial line number}
+
   sys_envvar_get (string_v('SIO_DEFAULT'), parm, stat);
   if not sys_error(stat) then begin
     string_t_int (parm, ii, stat);
@@ -296,13 +400,34 @@ begin
       sio := ii;
       end;
     end;
+
   sys_envvar_get (string_v('TEST_SIO'), parm, stat);
+  if sys_error(stat) then goto done_test_sio;
+  string_t_int (parm, ii, stat);
   if not sys_error(stat) then begin
-    string_t_int (parm, ii, stat);
-    if not sys_error(stat) then begin
-      sio := ii;
-      end;
+    sio := ii;
+    goto done_test_sio;
     end;
+  p := 1;                              {init parse index}
+  string_token (parm, p, opt, stat);   {extract first token of TEST_SIO string}
+  if sys_error(stat) then goto done_test_sio;
+  string_upcase (opt);
+  string_tkpick80 (opt, 'USB', pick);  {pick keyword from list}
+  case pick of                         {which keyword is it ?}
+1:  begin                              {USB [name]}
+      string_token (parm, p, opt, stat); {try to get optional name string}
+      if string_eos(stat) then opt.len := 0; {indicate no specific name given}
+      if sys_error(stat) then goto done_test_sio; {abort on hard error}
+      string_copy (opt, usbname);      {save name of USB device}
+      string_token (parm, p, opt, stat); {try to get additional token ?}
+      if not string_eos(stat) then begin {too many parameters}
+        writeln ('Too many parameters to USB command in TEST_SIO env var.');
+        sys_bomb;
+        end;
+      usb := true;                     {indicate to connect to USB device}
+      end;                             {end of "USB [name]" case}
+    end;                               {end of TEST_SIO keyword cases}
+done_test_sio:
 {
 *   Back here each new command line option.
 }
@@ -312,13 +437,14 @@ next_opt:
   sys_error_abort (stat, 'string', 'cmline_opt_err', nil, 0);
   string_upcase (opt);                 {make upper case for matching list}
   string_tkpick80 (opt,                {pick command line option name from list}
-    '-SIO -BAUD -XF -HWF -PARO -PARE',
+    '-SIO -BAUD -XF -HWF -PARO -PARE -USB',
     pick);                             {number of keyword picked from list}
   case pick of                         {do routine for specific option}
 {
 *   -SIO n
 }
 1: begin
+  usb := false;
   string_cmline_token_int (sio, stat);
   end;
 {
@@ -373,6 +499,21 @@ otherwise
   conf := conf + [file_sio_par_even_k]
   end;
 {
+*   -USB [name]
+}
+7: begin
+  usb := true;                         {indicate to connect to USB device}
+  string_cmline_token (opt, stat);     {get next command line token}
+  if string_eos(stat) then goto done_opts; {exhausted command line ?}
+  sys_error_abort (stat, 'string', 'cmline_opt_err', nil, 0);
+  if (opt.len >= 1) and (opt.str[1] = '-') then begin {next option, not name ?}
+    string_cmline_reuse;               {put this command line option back}
+    usbname.len := 0;                  {indicate no specific name given}
+    goto next_opt;
+    end;
+  string_copy (opt, usbname);          {save specific name of USB device}
+  end;
+{
 *   Unrecognized command line option.
 }
 otherwise
@@ -393,16 +534,17 @@ parm_bad:                              {jump here on got illegal parameter}
 done_opts:                             {done with all the command line options}
 {
 *   All done reading the command line.
+*
+*   Open the connection to the device.
 }
-  file_open_sio (                      {open connection to the serial line}
-    sio,                               {number of serial line to use}
-    baud,                              {baud rate ID}
-    conf,                              {additional configuration options}
-    conn,                              {returned connection to the serial line}
-    stat);
-  sys_error_abort (stat, '', '', nil, 0);
-  file_sio_set_eor_read (conn, '', 0); {no special input end of record sequence}
-  file_sio_set_eor_write (conn, '', 0); {no special output end of record sequence}
+  if usb
+    then begin
+      connect_usb;
+      end
+    else begin
+      connect_sio;
+      end
+    ;
 {
 *   Perform some system initialization.
 }
@@ -413,7 +555,7 @@ done_opts:                             {done with all the command line options}
   newline := true;                     {STDOUT is currently at start of new line}
 
   sys_event_create_bool (ev_recv);     {create event for byte received and shown}
-  sys_thread_create (                  {start thread for reading serial line input}
+  sys_thread_create (                  {start thread for handling gaps in received data}
     addr(thread_break),                {address of thread root routine}
     0,                                 {argument passed to thread (unused)}
     thid_brk,                          {returned thread ID}
@@ -542,7 +684,18 @@ loop_tk:                               {back here to get each new data token}
 done_cmd:                              {done processing the current command}
   if sys_error(stat) then goto err_cmparm; {handle error, if any}
   if obuf.len > 0 then begin           {one or more bytes to send ?}
-    file_write_sio_rec (obuf, conn, stat); {send the data bytes}
+    if usb
+      then begin                       {connected via USB}
+        file_write_embusb (            {write the bytes in OBUF}
+          obuf.str,                    {the data bytes to write}
+          conn,                        {connection to the device}
+          obuf.len,                    {number of bytes to write}
+          stat);
+        end
+      else begin                       {connected via serial line}
+        file_write_sio_rec (obuf, conn, stat); {send the data bytes}
+        end
+      ;
     if sys_error(stat) then goto err_cmparm;
     end;
   goto loop_iline;                     {back to process next command input line}
