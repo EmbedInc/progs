@@ -5,12 +5,7 @@ rem
 rem   Build everything from this library.
 rem
 setlocal
-set srcdir=progs
-set buildname=
-
-call src_go %srcdir%
-call src_getfrom stuff stuff.ins.pas
-call src_getfrom math math.ins.pas
+call build_pasinit
 
 rem   Programs with Pascal source modules.
 rem
@@ -33,6 +28,7 @@ call src_prog %srcdir% get_pic_info %1
 call src_prog %srcdir% hex_dump %1
 call src_prog %srcdir% instek_dump %1
 call src_prog %srcdir% macadr %1
+call src_prog %srcdir% menu_entry %1
 call src_prog %srcdir% mort %1
 call src_prog %srcdir% pic_activity %1
 call src_prog %srcdir% primefact %1
