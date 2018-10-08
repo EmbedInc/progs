@@ -30,6 +30,7 @@ call src_prog %srcdir% instek_dump %1
 call src_prog %srcdir% macadr %1
 call src_prog %srcdir% menu_entry %1
 call src_prog %srcdir% mort %1
+call src_prog %srcdir% mxlookup %1
 call src_prog %srcdir% pic_activity %1
 call src_prog %srcdir% primefact %1
 call src_prog %srcdir% quad %1

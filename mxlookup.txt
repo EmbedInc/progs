@@ -1,0 +1,13 @@
+                             Program MXLOOKUP
+                              8 October 2018
+
+mxlookup <domain name>
+
+Looks up the MX (mail exchange) servers for the indicated domain.  MX
+servers are those hosts that accept SMTP mail for the domain.
+
+For each server, the preference, TTL, and host name are shown.  These are
+listed in most to least preferred order.  A lower preference number
+indicates the use of that server is more preferred.  TTL is the "time to
+live" in seconds.  This is how long that entry can be considered valid
+before another formal query must be made.
