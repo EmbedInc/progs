@@ -10,7 +10,6 @@ var
     %include '(cog)lib/string256.ins.pas';
   mx_p: sys_mxdom_p_t;                 {pointer to MX info for the domain}
   host_p: sys_mxrec_p_t;               {pointer to info about one MX host}
-  mem_p: util_mem_context_p_t;         {points to private mem context}
   stat: sys_err_t;                     {completion status}
 
 begin
@@ -38,6 +37,5 @@ begin
     host_p := host_p^.next_p;          {advance to next list entry}
     end;                               {back to process this new list entry}
 
-  mem_p := mx_p^.mem_p;                {make local copy of pointer to private mem}
-  util_mem_context_del (mem_p);        {delete the private memory context}
+  sys_mx_dealloc (mx_p);               {deallocate the MX records}
   end.
