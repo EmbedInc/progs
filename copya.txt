@@ -1,0 +1,144 @@
+                              Program COPYA
+                             20 February 2014
+
+copya [options]
+
+Copy a text file to another file and/or to standard output.  The
+destination file is created if not already existing, and overwritten if
+previously existing.
+
+Command line options are:
+
+  <input file name>
+
+    The first command line options that does not start with a dash (-)
+    will be taken as the input file name if no input file name was
+    previously set.  An input file name is mandatory.
+
+  <output file name>
+
+    The first command line argument that does not start with a dash after
+    the input file name is specified, but no output file name has yet been
+    specified, will be taken as the output file name. The default output
+    file name is the leafname of the input file.
+
+  -IN <input file name>
+
+    Explicitly set the input file name.  This is the only way to indicate
+    an input file name that starts with a dash (-).
+
+  -S <string>
+
+    Use the string in place of data from a source file.  The string must
+    be enclosed in quotes ("") or apostrophies ('') if it contains blanks.
+    This command line option is mutually exclusive with -IN.
+
+  -OUT <output file name>
+
+    Explicitly set the output file name.  This is the only way to indicate
+    an output file name that starts with a dash (-).
+
+  -APPEND
+
+    Indicate that the copied text is to be appended to the end of the
+    output file instead of used to overwrite it, when an output file is
+    used.
+
+  -1BLANK
+
+    A single blank line will be written whenever one or more blank lines
+    would have otherwise been written to the output file.  The default is
+    to write all lines regardless of whether they are blank or not.
+
+  -NOBLANK
+
+    Only non-blank lines are written to the output.  The default is to
+    write all lines regardless of whether they are blank or not.
+
+  -SHOW
+
+    Everything written to the output file will also be copied to standard
+    output.  The default is to not copy data to standard output.
+
+  -NSHOW
+
+    Disable -SHOW.  This is the default.
+
+  -WRITE
+
+    Write data to the output file.  This is the default.
+
+  -NWRITE
+
+    Don't write data to the output file.  The default is -WRITE.
+
+  -LIST
+
+    This has the same effect as -SHOW and -NWRITE, and is supplied for
+    convenience.  The default is -NSHOW and -WRITE.
+
+  -FROM n
+
+    Set the number of the first source line to copy.  The first line in a
+    file is number 1.  The default is 1.
+
+  -TO n
+
+    Set the number of the last source line to copy.  The default is copy
+    to the end of the file.
+
+  -TABS T1 T2 . . . Tn
+
+    Set tabs stops and enable tab interpretation.  All tab characters in
+    the input file will be converted to one or more space characters in
+    the output file.  The values T1 thru Tn are the tab columns in
+    ascending order.
+
+    The first valid tab column is 2.  Each tab is always converted to at
+    least one space, so an input line starting with a tab would result in
+    the first printable character at column two or greater.
+
+    The interval between the last two tab columns is repeated to the end
+    of the line.  If only one tab column is given, then the interval width
+    is that column number minus 1.
+
+    Tabbing is only performed in the first 256 output line columns. Tabs
+    occurring in output line column 257 or greater are converted to single
+    spaces.  This is equivalent to having permanent tab stops at all
+    columns beyond 256.
+
+    For example, -TABS 9 would result in tab stops 9, 17, 25, 33, ... 241,
+    249.  -TABS 5 10 30 31 would result in tab stops at 5, 10, 30, 31, 32,
+    33, ... 254, 255, 256.
+
+    The default is to copy tab characters directly to the output file
+    without any interpretation.
+
+  -REPL patt1 patt2
+
+    Replace occurrences of the pattern PATT1 in the input with the pattern
+    PATT2 in the output.  The match of PATT1 to the input stream is
+    case-insensitive, but the conversion follows the input pattern case to
+    some extent where the input string and PATT2 are lower case.  If all
+    of the input pattern is upper case, then the output pattern will be
+    upper case.  If the first input pattern character is upper case but
+    the rest lower, the output pattern will be written the same way.
+
+    Any number of -REPL command line options are permissible.  They are
+    applied in the order they appear on the command line.  All
+    substitution for one pattern are performed, then the result is applied
+    to the next pattern.  This means the output of early patterns become
+    the input strings to later patterns.
+
+    EXAMPLE: If PATT1 is "qqq" and PATT2 is "abc", then the following
+    substitutions will be made from the input stream to the output stream:
+
+    Qqq is here.  -->  Abc is here.
+    We have 27 qqq in stock.  -->  We have 27 abc in stock.
+    QQQ User Manual  -->  ABC User Manual
+
+  -REPLNC patt1 patt2
+
+    Like -REPL except that no case conversions are performed.  The
+    existing text must match PATT1 exactly (case sensitive), and it is
+    replaced by PATT2 exactly (no case changes) on a match.

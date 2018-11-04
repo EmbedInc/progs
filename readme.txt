@@ -1,4 +1,4 @@
-This library is a collection of utility programs that
-don't fit into a particular subsystem, or for which no
-separate subsystem has been created yet.  The programs
-therefore do not have a common theme.
+This library contains "small" general purpose programs.  Programs for
+testing specific features of a library are in the same directory as that
+library. Large programs with many source modules are in their own source
+directory.
