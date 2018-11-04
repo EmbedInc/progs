@@ -47,7 +47,6 @@ call src_prog %srcdir% runon %1
 call src_prog %srcdir% slink %1
 call src_prog %srcdir% sum %1
 call src_prog %srcdir% test_args %1
-call src_prog %srcdir% test_partref %1
 call src_prog %srcdir% test_sio %1
 call src_prog %srcdir% test_usb %1
 call src_prog %srcdir% text_htm %1

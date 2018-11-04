@@ -1,0 +1,5 @@
+                            Program PRIMEFACT
+
+primefact <integer>
+
+Show all the prime factors of INTEGER.

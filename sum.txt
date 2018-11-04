@@ -1,0 +1,8 @@
+                               Program SUM
+
+sum val1 ... valN
+
+Write the sum of all the command line arguments as a single token to
+standard output.  If all command line arguments are integer, then the
+result will be integer.  If one or more arguments are floating point, then
+the result will be floating point.

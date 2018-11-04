@@ -1,0 +1,7 @@
+                            Program AFONT_FONT
+
+afont_font <input file name> [<output file name>]
+
+Create binary .FONT file from a text .AFONT file.  The mandatory ".afont"
+file suffix of the input file and the ".font" suffix of the output file
+may be omitted in the command line arguments.

@@ -1,0 +1,6 @@
+                           Program FIXNAME_NEF
+
+Fix all the raw camera NEF file names in the current directory.  These are
+named DSC_xxxx.NEF in the camera, where XXXX is a 4 digit number.  This
+program renames any such file to xxxx.nef.  Note that the resulting name
+will be lower case.  The case of the original file name is irrelevant.
