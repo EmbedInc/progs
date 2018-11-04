@@ -5,23 +5,23 @@
 *   is the default directory.
 }
 program downcase_dir;
-%include '/cognivision_links/dsee_libs/sys/sys.ins.pas';
-%include '/cognivision_links/dsee_libs/util/util.ins.pas';
-%include '/cognivision_links/dsee_libs/string/string.ins.pas';
-%include '/cognivision_links/dsee_libs/file/file.ins.pas';
+%include 'sys.ins.pas';
+%include 'util.ins.pas';
+%include 'string.ins.pas';
+%include 'file.ins.pas';
 
 const
   max_msg_parms = 2;                   {max parameters we can pass to a message}
 
 var
   dir:                                 {directory name from command line}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   dir_set: boolean;                    {TRUE if directory name already set}
   change: boolean;                     {TRUE if make changes}
 
   opt,                                 {upcased command line option}
   parm:                                {command line option parameter}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   pick: sys_int_machine_t;             {number of token picked from list}
   msg_parm:                            {references arguments passed to a message}
     array[1..max_msg_parms] of sys_parm_msg_t;

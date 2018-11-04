@@ -3,10 +3,10 @@
 *   List contents of directory.
 }
 program l;
-%include '/cognivision_links/dsee_libs/sys/sys.ins.pas';
-%include '/cognivision_links/dsee_libs/util/util.ins.pas';
-%include '/cognivision_links/dsee_libs/string/string.ins.pas';
-%include '/cognivision_links/dsee_libs/file/file.ins.pas';
+%include 'sys.ins.pas';
+%include 'util.ins.pas';
+%include 'string.ins.pas';
+%include 'file.ins.pas';
 
 const
   separate = 2;                        {min chars between columns}
@@ -21,9 +21,9 @@ type
 var
   width_out: sys_int_machine_t;        {max width of output lists, if possible}
   dnam:                                {directory name from command line}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   topdir:                              {treename of top directory to list}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   i: sys_int_machine_t;                {scratch integer and loop counter}
   c: char;                             {scratch character}
   dnam_set: boolean;                   {TRUE if DNAM set on command line}
@@ -35,9 +35,9 @@ var
   sline: boolean;                      {show each obj on single line, no headers}
 
   opt:                                 {upcased command line option}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   parm:                                {command line option parameter}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   pick: sys_int_machine_t;             {number of token picked from list}
   msg_parm:                            {parameter references for messages}
     array[1..max_msg_parms] of sys_parm_msg_t;

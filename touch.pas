@@ -6,14 +6,14 @@
 *   flags depending on operating system.
 }
 program touch;
-%include '/cognivision_links/dsee_libs/sys/sys.ins.pas';
-%include '/cognivision_links/dsee_libs/util/util.ins.pas';
-%include '/cognivision_links/dsee_libs/string/string.ins.pas';
-%include '/cognivision_links/dsee_libs/file/file.ins.pas';
+%include 'sys.ins.pas';
+%include 'util.ins.pas';
+%include 'string.ins.pas';
+%include 'file.ins.pas';
 
 var
   fnam:                                {file name}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   conn: file_conn_t;                   {connection to the file}
   buf: sys_int_machine_t;              {read buffer, not actually written to}
   olen: sys_int_adr_t;                 {actual size of read}

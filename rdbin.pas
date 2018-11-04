@@ -38,10 +38,10 @@
 *   The old -R command line option is still active.
 }
 program rdbin;
-%include '/cognivision_links/dsee_libs/sys/sys.ins.pas';
-%include '/cognivision_links/dsee_libs/util/util.ins.pas';
-%include '/cognivision_links/dsee_libs/string/string.ins.pas';
-%include '/cognivision_links/dsee_libs/file/file.ins.pas';
+%include 'sys.ins.pas';
+%include 'util.ins.pas';
+%include 'string.ins.pas';
+%include 'file.ins.pas';
 
 const
   linsize = 8;                         {number of bytes per output line}
@@ -61,11 +61,11 @@ var
   ibuf_p: ibuf_p_t;                    {points to input data buffer}
   ibuf: ibuf_t;                        {input file buffer}
   fnam:                                {input file name}
-    %include '/cognivision_links/dsee_libs/string/string_treename.ins.pas';
+    %include '(cog)lib/string_treename.ins.pas';
   obuf:                                {one line output buffer}
-    %include '/cognivision_links/dsee_libs/string/string132.ins.pas';
+    %include '(cog)lib/string132.ins.pas';
   s:                                   {scratch string}
-    %include '/cognivision_links/dsee_libs/string/string32.ins.pas';
+    %include '(cog)lib/string32.ins.pas';
   i: sys_int_adr_t;                    {loop counter}
   im: sys_int_machine_t;               {scratch machine integer}
   i32: integer32;                      {32 bit integer for interpreting file}
@@ -82,7 +82,7 @@ var
   c: char;                             {scratch character}
 
   opt:                                 {command line option name}
-    %include '/cognivision_links/dsee_libs/string/string32.ins.pas';
+    %include '(cog)lib/string32.ins.pas';
   pick: sys_int_machine_t;             {number of token picked from list}
 
   stat: sys_err_t;                     {completion status code}

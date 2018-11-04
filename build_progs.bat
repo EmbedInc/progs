@@ -13,6 +13,7 @@ call src_prog %srcdir% afont_font %1
 call src_prog %srcdir% align_comments %1
 call src_prog %srcdir% bom_labels %1
 call src_prog %srcdir% c-f %1
+call src_prog %srcdir% cogserve cogserve_util cogserve_cli cogserve_sys %1
 call src_prog %srcdir% copya %1
 call src_prog %srcdir% copyt %1
 call src_prog %srcdir% carcost %1
