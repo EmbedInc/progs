@@ -1,0 +1,54 @@
+                            Program TEST_USB
+                              8 April 2016
+
+test_usb [options]
+
+Program for testing the byte-level communication to a Embed USB device.
+This is similar to program TEST_SIO, which tests byte-level communication
+over a serial line.
+
+The program displays each received byte on a single line in hexadecimal,
+decimal, and printable character representation when appropriate.  It
+allows sending bytes as ASCII characters or a string, in decimal, or in
+hexadecimal.
+
+The command line options are:
+
+  -VID n
+
+    Set the USB vendor ID (VID) of the device to connect to.  The default
+    is 5282, which is the Voti vendor ID used by most Embed devices.
+
+  -PID n
+
+    Set the USB physical device ID (PID) of the device to connect to.  The
+    default is 1489, which is the PID for Embed device 10.
+
+  -E n
+
+    Set the USB VID and PID combination for a particular Embed device.
+    Valid values are 1-20.  Embed devices were allocated in two blocks of
+    PIDs within the Voti VID.  N of 1-10 correspond to the first block,
+    which has PIDs from 1480 to 1489.  N of 11-20 correspond to the second
+    block, which has PIDs from 2610 to 2619.
+
+    For example, "-E 1" is the same as "-VID 5282 -PID 1480" and "-E 12"
+    is the same as "-VID 5282 -PID 2611".
+
+  -N name
+
+    Specifies the internal name of the Embed USB device to connect to. All
+    these devices have a name string, which is communicated to the driver
+    during device enumeration.  When this NAME is not the empty string,
+    this program will only connect to a device with that name.  When NAME
+    is empty, then device names are not used in deciding which device to
+    connect to.  The default is the empty string.  When more than one
+    device meets the criteria, the device to connect to is arbitrarily
+    chosen.
+
+    In all cases, the program only connects to a USB device with the
+    specified VID and PID.
+
+Once the program starts up, commands can be entered at the colon (": ")
+prompt.  The commands "HELP" and "?" will cause a brief list of commands
+and their descriptions to be written to standard output.

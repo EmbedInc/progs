@@ -1,0 +1,20 @@
+
+
+                             Program RDBIN
+
+rdbin <file name>
+
+Writes the data in the file as hexedecimal bytes, 16 bit integers, 32
+bit integers, 32 bit floating point, and ASCII characters.  Each line
+of output represents eight bytes from the input file.  This program may
+be useful to inspect binary files.
+
+
+COMMAND LINE OPTIONS
+
+    -R
+
+         Reverse the byte order when interpreting more than one byte as
+         a number.  This may be necessary to properly read files
+         written on Intel or DEC machines.  The default works properly
+         on Motorola CPUs and most Unix workstations.

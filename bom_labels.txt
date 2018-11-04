@@ -1,0 +1,31 @@
+                            Program BOM_LABELS
+                             13 October 2008
+
+bom_labels [options]
+
+Creates a SLIDE program include file from a BOM for making a label for
+each part type in a kit.  The procedure for producing a compatible BOM is
+described in the CSV_BOM program documentation file.
+
+To make the input file for this program from a compatible BOM, export the
+BOM to a comma separated file.
+
+The SLIDE program include file produced by this program is called
+LABEL_BOM.INS.SL and is written to the ~/eagle/sl directory.  It is
+intended to be used with the LABE_BOM.SL slide program.  This SLIDE
+program positions the text appropriately for each label for printing onto
+a sheet of labels.
+
+The total quantity required for a build, a description string, and the
+list of component designators for that part are written to the label.
+These are intended to facilitate filling the kit as well as building it.
+
+The command line options are:
+
+     -IN filename
+     filename
+
+       Specifies the name of the .CSV input file.  The first form of this
+       command line option (with the -IN keyword) works in all cases.  The
+       second form is for convenience only and does not work if the file
+       name starts with a dash (-).

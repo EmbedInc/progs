@@ -1,0 +1,60 @@
+                               Program MORT
+                               13 June 2006
+
+mort <input file name>
+
+Prints out info about a mortgage, given payment and interest history.  The
+input file name must end in .MORT, although this may be omitted on the
+command line.
+
+The input file contains a set of commands.  Commands start with a keyword
+and may have parameters following them.  All keywords are case
+insensitive.  The command names and parameters must be separated from each
+other by one or more spaces.  Character string parameters must be enclosed
+in either quotes (""), or apostrophies ('') if they contain spaces or the
+"/*" comment delimeter.  A command cannot span more than one line.
+
+All blank lines are ignored.  End of line comments start with "/*".  In
+other words, "/*" and all characters following on the same line are
+ignored.
+
+Valid input file commands are:
+
+  BORROW d
+
+    Indicate the number of dollars borrowed.  This sets the initial size
+    of the loan on the date specified by the DATE command if no PAY
+    commands have been given yet.  After the first PAY command, this
+    indicates any additional amount borrowed and will apply at the time of
+    the previous payment.
+
+  INT r
+
+    Indicate the current effective annual interest rate in percent.  At
+    least one INT command must precede the first PAY command.
+
+  DATE yyyy mm dd
+
+    Declares the date of the loan.  This is only used for reporting the
+    date of each transaction.  The year should be the full 4 digits, the
+    month should be 1-12, and DD is the 1-31 day of the month.  The first
+    payment is assumed to be due one month after this date.  This command
+    must precede any PAY and BORROW commands.
+
+  PAY d [RUN n] [PAY_INT p]
+
+    Indicate the current monthly payment size in dollars.
+
+    The optional RUN subcommand sets the number of consective months to
+    automatically apply this size payment to.  The default for N is 1,
+    meaning the payment applies to a single month.
+
+    The optional PAY_INT subcommand explicitly sets the amount of the
+    payment to be applied to the accumulated interest as apposed to the
+    principle.  By default, as much as possible of the payment is applied
+    to any outstanding interest instead of principle.  It is an error to
+    set this amount greater than the total outstanding interest, or
+    greater than the amount of the payment.
+
+The program will write a monthly accounting of the loan to standard
+output.

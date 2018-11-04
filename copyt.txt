@@ -1,0 +1,62 @@
+
+
+                             Program COPYT
+
+copyt [options]
+
+This program copies a file system object from one place to another.  If
+the file system object is a directory, then the whole directory tree is
+copied.  Symbolic links are followed to resolve the final source object
+to copy.  Symbolic links are not followed to resolve the destination
+object.
+
+If the destination object previously exists, and both it and the source
+object are a directory, then the contents of the source directory are
+added to the destination directory.  Files appearing in both trees are
+overwritten in the destination directory.  Files only appearing in the
+destination directory are left unmodified.
+
+The command line options are:
+
+  <source object name>
+
+       When a command line option is encountered that does not start
+       with a dash (-) it is assumed to be the source object name, if
+       the source object name has not already been set.  This form of
+       specifying the source object name is for convenience, and does
+       not work when the name starts with a dash.  The -FROM command
+       line option works in all cases.  There is no default source
+       object name.  It is an error if no source object name is
+       supplied.
+
+  <destination object name>
+
+       When a command line option is encountered that does not start
+       with a dash (-) it is assumed to be the destination object name,
+       if the source object name has already been set.  This form of
+       specifying the destination object name is for convenience, and
+       does not work when the name starts with a dash.  The -TO command
+       line option works in all cases.  The default destination object
+       name is the leafname (no directory path) of the source object.
+
+  -FROM <source object name>
+
+       Explicitly set the source object name.  There is no default
+       source object name.  It is an error if no source object name is
+       supplied.
+
+  -TO <destination object name>
+
+       Explicitly set the destination object name.  The default
+       destination object name is the leafname (no directory path) of
+       the source object.
+
+  -NSHOW
+
+       Don't show progress to standard output.  By default, the name of
+       each file is shown as it is copied.
+
+  -NREPL
+
+       Prohibit replacing an existing object.  By default, an existing
+       destination object is overwritten.

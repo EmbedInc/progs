@@ -1,0 +1,11 @@
+                               Program QUAD
+                              15 March 2015
+
+quad a b c
+
+This program solves a quadratic equation.  Specifically, the equation is:
+
+  A x^2 + B x + C = 0
+
+The coefficients A, B, and C are entered on the command line.  The program
+solves for X and displays the results.

@@ -1,0 +1,48 @@
+                           Program INSTEK_DUMP
+                             29 October 2007
+
+
+instek_dump [options]
+
+Dump the screen data from a Instek GDS-800 series oscilloscope to a file.
+
+A system serial port must be connected to the serial port of the
+oscilloscope using a female to female crossover cable.  Only pins 2, 3,
+and 5 are used from the DB-9 connector at each end.  Pins 2 and 3 must be
+crossed between the ends, and pin 5 must be connected directly between the
+ends.
+
+The oscilloscope serial port baud rate must be set to 38.4K baud.  This
+can be done with the menu sequence UTILITY > INTERFACE MENU > BAUD RATE.
+
+The command line options are:
+
+  filename
+  -OUT filename
+
+       Specifies the generic output file name.  The first form of this
+       command line option without the "-OUT" keyword is for convenience
+       and can only be used when the file name does not start with a dash
+       (-). The suffix for the specific output file type may be omitted
+       from the FILENAME parameter.  The default generic output file name
+       is "scope".  The default output file type is CSV with suffix ".csv".
+
+  -SIO n
+
+       Selects the system serial line to use to communicate to the scope
+       with.  The default is 1 (COM 1 on PC systems).
+
+  -SL
+
+       The output file will be a include file for the slide making program
+       SLIDE.  The output file suffix will be ".ins.sl".  The data will be
+       written as a MOVE command to the first data point and DRAW commands
+       to subsequent data points.  Only the data for one channel is
+       written.  By default, this is the first enabled channel.
+
+  -CHAN n
+
+       Specifies the 1-N number of the scope channel to write to output
+       files that can only handle the data for a single channel.  This
+       option has no effect for output files that can accept the data for
+       multiple channels.

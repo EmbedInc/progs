@@ -1,0 +1,8 @@
+                            Program TEST_ARGS
+                              15 August 2008
+
+test_args arg ... arg
+
+Test program to show the command line arguments.  Each command line
+argument is written on a separate line to standard output and to the file
+/temp/test_args.txt.

@@ -1,0 +1,32 @@
+
+
+                       Program WAV_CSV [options]
+
+This program writes the data in a WAV file to a CSV (Comma Separated
+Values) file.  The first CSV file column will be time in seconds, and
+the remaining columns will be the channel values for that sample in -1
+to +1 format.  The CSV file will be much larger than the WAV file, but
+is a common format that can be understood by many programs.
+
+The command line arguments are:
+
+  -IN fnam
+  fnam
+
+       Specifies the input WAV file.  The ".wav" file name suffix may
+       be omitted.  The second form of the command line option without
+       the -IN keyword is allowed when the WAV file name does not start
+       with a dash and the input file name has not already been
+       specified.  There is no default input file name; an input file
+       name is required on the command line.
+
+  -OUT fnam
+  fnam
+
+       Specifies the output CSV file.  The ".csv" file name suffix may
+       be omitted.  The second form of the command line option without
+       the -OUT keyword is allowed when the CSV file name does not
+       start with a dash, the input file name has already been
+       specified, and the output file name has not already been
+       specified.  The default output file name is the generic leafname
+       of the input file.

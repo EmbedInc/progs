@@ -1,0 +1,11 @@
+                             Program TOUCH
+
+touch <filename>
+
+Lets the system think the file has been modified, although no contents is
+actually changed.  This causes the last modified date/time to be set to
+the current date time.  It may also effect modified or backup flags
+depending on the operating system.
+
+If the indicated file does not exist, then an empty file of that name will
+be created.

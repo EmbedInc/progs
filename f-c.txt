@@ -1,0 +1,7 @@
+                               Program F-C
+
+
+f-c degF
+
+Converts the argument in degrees Farenheit to Celsius and writes out the
+result.

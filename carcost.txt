@@ -1,0 +1,11 @@
+                             Program CARCOST
+                              5 October 2008
+
+carcost
+
+This program computes the present value of the purchase price of a car and
+its future fuel costs.  The time value of money is taken into account.
+
+The program takes no command line parameters.  It asks questions, then
+produces a table of yearly costs up to 15 years or 200,000 miles,
+whichever comes first.

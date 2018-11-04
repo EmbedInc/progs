@@ -1,0 +1,6 @@
+                              Program MACADR
+                               29 May 2014
+
+macadr
+
+Allocates a unique permanent MAC address and writes it to standard output.

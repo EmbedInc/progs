@@ -1,0 +1,21 @@
+                          Program FIND_STRING
+                            24 January 2006
+
+
+find_string <file> <pattern>
+
+Search for the string pattern specified by PATTERN in the file FILE.  If
+the pattern is found anywhere in the file, the file name is shown
+followed by each line, with its line number, that contains the pattern.
+If no line contains the pattern then nothing is written to standard
+output.
+
+PATTERN is a literal string except that the following characters have
+special meaning:
+
+  ^  -  Escape character.  The following character is used literally
+        regardless of any special meaning it might otherwise have.
+
+  *  -  Wildcard.  Matches zero or more characters.
+
+Literal characters are case-insensitive.

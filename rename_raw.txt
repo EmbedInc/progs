@@ -1,0 +1,12 @@
+                            Program RENAME_RAW
+                              8 January 2012
+
+
+rename_raw [options]
+
+This program renames raw camera files in the current directory to shorter
+and easier to handle names.  It currently takes no command line options.
+
+The following names will be changed:
+
+  DSC_xxxx.NEF  -->  xxxx.nef

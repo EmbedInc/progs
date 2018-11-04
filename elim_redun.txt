@@ -1,0 +1,7 @@
+                           Program ELIM_REDUN
+                              5 March 2016
+
+elim_redun <in fnam> <out fnam>
+
+All adjacent redundant lines are eliminated by writing them only once to
+the output file.

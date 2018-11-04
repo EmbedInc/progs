@@ -1,0 +1,13 @@
+                           Program PIC_ACTIVITY
+                             16 January 2009
+
+
+pic_activity
+
+Make a list of recent PIC firmware development activity by quarter.
+Activity is determined by HEX files and their time stamps in the SRC
+directory.  Activity is listed by quarter year, including the current
+quarter and the previous four complete quarters.
+
+For each quarter, the released firmware versions created that quarter are
+shown sorted by source directory, then project name, then version number.

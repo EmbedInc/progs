@@ -1,0 +1,7 @@
+                              Program FLINES
+                             31 December 2006
+
+flines <filename>
+
+Show the number of text lines in the indicated file.  The result is
+written as a single decimal integer to standard output.

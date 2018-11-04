@@ -1,0 +1,17 @@
+                           Program WAITENTER
+                             15 March 2008
+
+
+waitenter [options]
+
+Wait for the user to enter a string, then write that string to standard
+output.  The command line options are:
+
+  -PROMPT string
+
+       Use the explicit prompt string.  The prompt string is written to
+       standard output without terminating the line, then the program
+       waits for the user to enter something.  The default prompt string
+       is "Hit ENTER to continue: ".  The prompt string parameter to the
+       -PROMPT command line option must be enclosed in quotes ("") or
+       apostrophies ('') if it contains any blanks.

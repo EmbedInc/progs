@@ -1,0 +1,29 @@
+
+
+                          Program DOWNCASE_DIR
+
+downcase_dir [options]
+
+This program can change all file names in a directory tree to lower
+case.  The complete treename of file names with upper case letters is
+listed to standard output.  The command line options are:
+
+  <target directory name>
+
+       When a command line option is encountered that does not start
+       with a dash (-) it is assumed to be the target directory name,
+       if the directory name has not already been set.  This form of
+       specifying the directory name is for convenience, and does not
+       work when the name starts with a dash.  The -IN command line
+       option works in all cases.  The default target directory is the
+       current directory.
+
+  -IN <target directory name>
+
+       Explicitly set the target directory name.  The default target
+       directory is the current directory.
+
+  -CHECK
+
+       Inhibit making any changes.  All the names found with upper case
+       letters are still listed to standard output as usual.

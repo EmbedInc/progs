@@ -1,0 +1,67 @@
+                         Program ALIGN_COMMENTS
+
+ALIGN_COMMENTS <source file name> [options]
+
+Copy a text file to another file.  The destination file is created if
+not already existing, and overwritten if previously existing.  The
+command line options are:
+
+  -OUT filename
+
+       Explicitly set output file name.  The default output file name
+       is the leafname of the input file.
+
+  -EXCL <character range spec>
+
+       Define an exclusion within which characters will be copied
+       verbatim.
+
+  -COMM <character range spec>
+
+       Define one comment type.
+
+  -COMTAB n
+
+       Set tab column for comment starts.  Only comments following
+       non-blank characters on the same line will be adjusted.  The
+       default is 40 except for some file types as shown below.
+
+The <character range spec> syntax referred to above describes how a
+range of characters (like an inline comment or a quoted string) are
+delimeted.  A range spec must always contain at least two tokens.
+These are the start and end of range recognition strings.  Additional
+keywords are allowed after that.  These keywords are:
+
+  -BOL
+
+       The range always starts at the beginning of a line.  This means
+       that the range start string is only valid if found in column 1.
+
+  -EOL
+
+       End of line terminates the range.  The end of range string
+       becomes irrelevant if this keyword is present.
+
+  -LINE
+
+       The range is contrained to start and end on the same line.  It
+       is an error if the end of line is encountered within such a
+       range.
+
+If no -EXCL or -COMM command line options are given, ALIGN_COMMENTS
+automatically selects defaults based on the input file name suffix.
+The file name suffixes and equivalent command line options for their
+defaults are:
+
+  File Name
+  Suffix        Default Comand Line Options
+  ----------    ---------------------------
+  .pas, .cog    -EXCL "'" "'" -COMM "{" "}" -COMM '"' '"'
+  .ftn          -EXCL "'" "'" -COMM C "" -bol -eol -COMM "{" "" -eol
+  .c, .h, .c18, .c30
+                -EXCL "'" "'" -EXCL '"' '"' -COMM "/*" "*/"
+                -COMM "//" "" -eol
+  .sml          -EXCL "'" "'" -EXCL '"' '"' -COMM "{" "}"
+  .asm, .ain    -EXCL "'" "'" -line -COMM ";" "" -eol -COMTAB 30
+  .aspic        -EXCL "'" "'" -line -EXCL '"' '"' -eol -COMM ";" "" -COMTAB 30
+  all others    -EXCL "'" "'" -EXCL '"' '"' -COMM "/*" "" -eol

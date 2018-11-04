@@ -1,0 +1,47 @@
+                            Program GET_NEWER
+                              30 July 2018
+
+get_newer [options]
+
+This program compares the modified times of a source and destination tree,
+and copies only the newer files from source to destination.
+
+The command line options are:
+
+  -FROM source
+  source
+
+    Indicates the source tree.  This is required.
+
+    The second form of this command line option (without the "-FROM") is
+    for convenience when typing interactively, and can only be used when
+    the source tree pathname does not start with a dash ("-").
+
+  -TO dest
+  dest
+
+    Sets the destination tree.  The default destination tree is the
+    leafname of the source tree in the current directory.
+
+    The second form of this command line option (without the "-TO") is for
+    convenience when typing interactively, and can only be used when the
+    source pathname has been given, and the destination pathname does not
+    start with a dash ("-").
+
+  -NCOPY
+
+    Perform the file time comparisons but do not actually copy any files.
+    This can be useful to see what files are newer in the source than in
+    the destination, but without making any changes.
+
+  -ND name
+
+    Do not copy any directories that have the indicated name.  When such a
+    directory is encountered, its entire tree is not copied.  There may be
+    any number of -ND options on the command line.
+
+  -NE
+
+    Allow the source directory to not exist.  By default, a non-existant
+    source diretory is a error.  With the -NE switch, a non-existant
+    source directory causes the program to silently exit without error.

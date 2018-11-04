@@ -1,0 +1,7 @@
+
+
+                   Program WAV_INFO <.wav file name>
+
+This program reads a .WAV file and shows its structure and control
+information.  WAV files contains sounds in various formats.  The ".wav"
+file name suffix may be omitted on the command line.

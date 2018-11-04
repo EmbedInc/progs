@@ -1,0 +1,78 @@
+
+
+                       Program WAV_COPY [options]
+
+This program copies one WAV file to another, allowing alterations in
+the process.
+
+The command line arguments are:
+
+  -IN fnam
+  fnam
+
+       Specifies the input WAV file.  The ".wav" file name suffix may
+       be omitted.  The second form of the command line option without
+       the -IN keyword is allowed when the WAV file name does not start
+       with a dash and the input file name has not already been
+       specified.  There is no default input file name; an input file
+       name is required on the command line.
+
+  -OUT fnam
+  fnam
+
+       Specifies the output WAV file.  The ".wav" file name suffix may
+       be omitted.  The second form of the command line option without
+       the -OUT keyword is allowed when the WAV file name does not
+       start with a dash, the input file name has already been
+       specified, and the output file name has not already been
+       specified.  The default output file name is the leafname of the
+       input file.
+
+  -FROM s
+
+       Start the output sound S seconds from the start of the input
+       sound.  This value is automatically limited to the input sound
+       duration.  The default is 0.
+
+  -TO s
+
+       End the output sound S seconds from the start of the input
+       sound.  This value is automatically limited to the input sound
+       duration.  The default is to end the output sound at the end of
+       the input sound.
+
+  -BITS n
+
+       Set the number of bits per channel per sample in the output
+       file.  This is only a request, and the actual number of bits
+       used may differ.  The default is for the requested value to be
+       the number of bits used in the input file.
+
+  -GAIN g
+
+       Set the amplitude gain from input to output file.  The default
+       is 1, meaning the input amplitude is preserved.
+
+  -GAIN *
+
+       Set the input to output amplitude gain so that the output signal
+       is maximized without being clipped.  The default is unit gain.
+
+  -SRATE hz
+
+       Set the sample rate of the output WAV file to the indicated
+       sample rate in Hertz.  The default is to use the same sample
+       rate as the input file.
+
+  -SPEED m
+
+       Set the relative source stream playback rate.  Values above 1
+       cause the source stream to be played back more quickly and
+       values below 1 more slowly.  The default is 1, which causes the
+       source stream to be played at its intended speed.
+
+  -MONO
+
+       Convert to monophonic.  All the input signal channels will be
+       averaged to produce the single output channel.  The default is
+       to preserve all the input channels.

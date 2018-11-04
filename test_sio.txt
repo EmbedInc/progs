@@ -1,0 +1,81 @@
+                            Program TEST_SIO
+                           11 September 2018
+
+test_sio [options]
+
+Program for testing low level serial line (RS-232 line) protocol.  The
+program displays each received byte on a single line in hexadecimal,
+decimal, and printable representation when appropriate.
+
+The command line options are:
+
+  -SIO n
+
+    Indicate the number of the system serial port (COM port on PC systems)
+    to use to communicate with the remote unit.
+
+    There are a series of defaults.  The first one of these that is found
+    is used:
+
+      1: Value of the environment variable TEST_SIO, if present and
+         interpretable as a integer value.
+
+      2: Value of the environment variable SIO_DEFAULT, if present and
+         interpretable as a integer value.
+
+      3: 1 (COM1 on PC systems).
+
+  -USB [name]
+
+    Send and receive bytes via a Embed USB device.  Endpoints 1 in and out
+    are used for receiving and sending, respectively.  Options for
+    configurations unique to serial ports (like -BAUD, for example) are
+    accepted but ignored.
+
+    NAME is the Embed USB device name as presented by the device to the
+    driver.  Names of connected devices can be found by running the
+    TEST_EMBUSB command.  If NAME is omitted, then the first Embed device
+    10 USB device found is used.  See the EMBED10 documentation file for
+    details on Embed device 10 USB devices.
+
+    Note that NAME is optional without causing ambiguity.  Embed USB
+    device names should never start with a dash (-).  If the token
+    following "-USB" starts with a dash, then it is intepreted as the name
+    of the next command line option.  If not, it is taken as the specific
+    Embed USB device to connect to.
+
+    If the TEST_SIO environment variable exists and contains the string
+    "USB <name>" or "USB", then that is the default when neither the -SIO
+    or -USB command line options are given.
+
+    If TEST_SIO does not exist or is not set to either "USB", or "USB"
+    followed by a space and a name string, then the default is to use a
+    serial port.  See the -SIO command line options for details.
+
+  -BAUD baudrate
+
+    Sets the serial line baud rate.  Valid values for BAUDRATE are 300,
+    1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, and 153600.  The
+    default is 115200.
+
+  -XF
+
+    Use XON/XOFF flow control.
+
+  -HWF
+
+    Use RTS/CTS hardware flow control.
+
+  -PARO
+
+    Add a ninth odd parity bit to each data byte. Parity will be generated
+    on outgoing bytes, but may not be checked on incoming bytes.
+
+  -PARE
+
+    Add a ninth even parity bit to each data byte. Parity will be
+    generated on outgoing bytes, but may not be checked on incoming bytes.
+
+Once the program starts up, commands can be entered at the colon (": ")
+prompt.  The commands "HELP" and "?" will cause a brief list of commands
+and their descriptions to be written to standard output.

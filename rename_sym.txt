@@ -1,0 +1,35 @@
+                            Program RENAME_SYM
+                               25 Mar 2016
+
+rename_sym [options]
+
+Renames all occurances of one symbol name with another.  Pascal syntax
+rules are used to determine what is a symbol, comment, etc.
+
+Only root symbol names are changed in executable code, not fields within
+records.
+
+The command line options are:
+
+  -F filename
+  filename
+
+    Specifies the name of the file that will be edited.  The short form of
+    this option without the "-F" keyword may be used if the file name has
+    not been previously set and it does not start with a dash.
+
+  -OLD name
+  name
+
+    Specifies the name of the symbol to change.  The short form of this
+    option without the "-OLD" keyword may be used if the file name has
+    already been given, the old symbol name not given, and the name does
+    not start with a dash.
+
+  -NEW name
+  name
+
+    Specifies the new name to substitute for the symbol.  The short form
+    of this option without the "-NEW" keyword may be used if the file name
+    and old symbol names have already been given, the new symbol name has
+    not been given, and the name does not start with a dash.

@@ -1,0 +1,12 @@
+                           Program FILES_SAME
+                            20 January 2006
+
+
+files_same fnam1 fnam2
+
+Compare two text files and return exit status of 0 if they are the same.
+If both files exist but differences were found then exit status 1 is
+returned.  If one or both files were not found then a higher exit status
+is returned but no error message written.  If an error other than not
+found is encountered on attempt to open either file, an error message is
+written and an exit status greater than 1 is returned.

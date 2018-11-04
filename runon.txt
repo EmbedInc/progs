@@ -1,0 +1,41 @@
+
+
+                           Test Program RUNON
+
+RUNON <machine name> <remote prog name> <remote arg 1> ... <arg N>
+
+Run a program on a remote machine.  The first command line argument to
+RUNON is the name of the remote machine.  The remaining command line
+arguments are used to make the command line to execute on the remote
+machine.  The remote command line is formed by concatenating the second
+thru last argument with one space between each argument.
+
+The standard output and error output streams from RUNON will be the
+standard and error output of the remote program.  The standard input to
+RUNON will be delivered to the standard input of the remote program.
+RUNON's exit condition (OK, TRUE, FALSE, WARNING, ERROR) will be the
+exit status code from the remote program.  In other words, the program
+will appear to the local command shell as if it were being run
+locally.
+
+RUNON requires a COGSERVE server to be running on the remote machine.
+
+
+Implementation Notes
+
+  RUNON is not fully implemented.  It currently has the following
+  limitations:
+
+    1)   Standard input is not passed to the remote program.  The
+         remote program's standard input is not accessible in any way.
+
+    2)   The output from the remote program is assumed to be text, and
+         is converted from the text format of the remote system to the
+         text format of the local system.  For example, Windows systems
+         denote an end of line (EOL) with two characters, carriage
+         return followed by line feed.  Unix systems denote an EOL with
+         just a line feed.
+
+         There is currently no provision for disabling this
+         interpretation.  RUNON can therefore not be used if the remote
+         program produces a binary stream.

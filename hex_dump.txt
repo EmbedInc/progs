@@ -1,0 +1,12 @@
+                             Program HEX_DUMP
+                               17 July 2008
+
+
+hex_dump <HEX file name>
+
+Dumps the contents of a Intel HEX file to standard output.  See the
+IHEX_BIN documentation file for a description of the HEX file format as
+supported by this program.  The address range, number of bytes, and the
+byte values are shown for each HEX file data line.  Lines with control
+information, like base addresses, are not shown, but the state set by
+those lines is updated accordingly.

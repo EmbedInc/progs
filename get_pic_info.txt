@@ -1,0 +1,40 @@
+                           Program GET_PIC_INFO
+                               17 July 2006
+
+get_pic_info <picname> [options]
+
+Get info about a particular PIC model.  The PICNAME parameter is the
+generic model name, like "18F2520" or "30F3013".
+
+With no command line options, all the information about the particular PIC
+is shown.  This includes the PIC family and class.  The family indicates
+the core type.  This mostly follows the PIC model numbers except that 12
+always means the 12 bit core and 16 always the 14 bit core.  The class is
+either "PIC" or "dsPIC".  The subclass is usually the single letter
+following the first number in the PIC name.  For example, the subclass of
+16C66 is "C", and of 33FJ64GS606 is "F".
+
+The command line options are:
+
+  -FAM
+
+       Write only the bare family name to standard output.  This command
+       line option is intended for retrieving the family name from a
+       script.
+
+  -CLASS
+
+       Write only the bare PIC class to standard output.  This command
+       line option is intended for use in scripts where the standard
+       output of this program is captured into a environment variable.
+
+  -SCLASS
+
+       Write only the bare PIC subclass to standard output.  This command
+       line option is intended for use in scripts where the standard
+       output of this program is captured into a environment variable.
+
+  -L
+
+       Make all output values lower case.  All output values are upper
+       case by default.

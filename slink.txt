@@ -1,0 +1,48 @@
+
+
+                             Program SLINK
+
+slink [<options>]
+
+Manipulate a symbolic file system link.  The command line options are:
+
+  <pathname>
+
+       Symbolic link name or link text.  The first argument not
+       starting with "-" is assumed to be the name of a symbolic link.
+       The second pathname argument, if present, is assumed to be the
+       text for the symbolic link.  A link name is always required,
+       although it can be supplied using the -NAME option, below.  The
+       link text may also be supplied using the -VAL option, below.
+
+  -NAME pathname
+
+       Explicitly give the link name.  This method is required if the
+       link name starts with "-".
+
+  -VAL text
+
+       Explicitly give the link text.  This method is required if the
+       link text starts with "-".
+
+  -REPL
+
+       Replace existing file or link, if neccessary.  This is the
+       default.
+
+  -NREPL
+
+       It is an error to attempt to create a link with the same name as
+       a previously existing file or link.  The default is -REPL.
+
+  -DEL
+
+       Delete the link.
+
+If only a link name is supplied, LINK will return TRUE status if the
+link exists and is a link, otherwise it will return FALSE status.
+
+If a link name and text is supplied, a new link will be created,
+subject to the other command line arguments.
+
+-DEL may only be used with link name (no link text).

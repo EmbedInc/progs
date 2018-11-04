@@ -1,0 +1,85 @@
+
+
+                               Program L
+
+l [options]
+
+List the contents of a directory or a tree.  The command line options
+are:
+
+  -DIR name
+  name
+
+       Specifies the directory or tree to list the contents of.  If a
+       command line option does not start with a dash (-), then it is
+       assumed to be the directory name.  The default directory is the
+       current directory.
+
+  -TREE
+
+       lists the contents of the whole file system tree starting at the
+       indicated directory.  The default is to list only the indicated
+       directory.
+
+  -RNAM
+
+       Shows the relative pathnames of listed objects with respect to
+       the top listed directory.  By default, only the leafname of each
+       object is listed.  Note that this option has no effect without
+       -TREE, since the relative pathnames in the top directory are the
+       leafnames.
+
+  -TNAM
+
+       Shows the full treenames of listed objects.  By default, only
+       the leafnames are shown.  No distinction is made in the listing
+       between files, directories, and links.
+
+  -R
+
+       List in raw mode.  Only objects are listed, each on a separate
+       line.  No blank lines, headings, or other formatting is output.
+       This mode can be useful for further processing within shell
+       scripts or other programs.
+
+  -NF
+  -ND
+  -NL
+
+       Do not list files (-NF), directories (-ND), or symbolic links
+       (-NL).  All are listed by default.
+
+  -LF
+  -LD
+  -LL
+
+       List files (-LF), directories (-LD), and symbolic links (-LL).
+       All three are enbled by default.
+
+  -LO flags
+
+       List only the indicated object types.  FLAGS is a string
+       containing individual letters to indicate all the object types
+       to list.  The possible letters in FLAGS are:
+
+         D  -  Directories.
+
+         L  -  Symbolic links.
+
+         F  -  Ordinary files and any object types not listed above.
+
+         A  -  All of the above object types.
+
+       All object types are listed by default.  The letters in FLAGS
+       may be upper or lower case.
+
+The command line arguments are processed in order.  Note that some
+command line arguments are order-dependent.  For example
+
+  -LO F -LL
+
+will cause files and symbolic links to be listed, whereas
+
+  -LL -LO F
+
+will cause only files to be listed.

@@ -1,0 +1,144 @@
+                            Program MENU_ENTRY
+                             14 November 2008
+
+menu_entry [options]
+
+Create or delete a system menu entry.  The meaning of "system menu entry"
+is specific to each particular operating system.  Generally operating
+systems have menu structures from which the user can run programs by
+selecting menu entries.  This program is intended to add or delete entries
+in such menus in the most normal way for the particular operating system
+in use.
+
+The command line options are:
+
+  -PROG filename
+  filename
+
+       Specifies the program to be run when the menu entry is activated.
+       The second form of this command line option (without the -PROG
+       keyword) is for convenience and is only allowed if the program name
+       has not already been specified on the command line and the program
+       name does not start with a dash (-).
+
+       FILENAME must be the name of the actual program file with any file
+       name suffix it might have, not its generic name.  Embed Inc file
+       name translation rules will be applied to FILENAME, and the final
+       result stored in the menu entry.  The indicated program must exist.
+
+       There is no default.  A program file name is required unless the
+       -DEL command line option is used.
+
+  -IFEX
+
+       Only try to create the menu entry if the target program exists.  If
+       it does not exist, MENU_ENTRY exits normally without creating the
+       menu entry.  The default is for MENU_ENTRY to bomb with error
+       status on attempt to create a menu entry without the target program
+       existing.
+
+  -ARGS "arg ... arg"
+
+       Sets the command line arguments for the menu entry target program.
+       The parameters to -ARGS is a single token, so must be enclosed in
+       quotes or apostrophies if more than one command line parameter is
+       supplied or the arguments otherwise contain blanks or special
+       characters.
+
+  -CMD command-line
+
+       Specifies the full command line to invoke the target program.  The
+       first token of COMMAND-LINE will be interpreted as the executable,
+       and the remaining tokens as the command line parameters.  If the
+       executable name does not contain any dot (.), then the ".exe"
+       suffix is automatically added.  Otherwise the full executable file
+       name must be specified.  COMMAND-LINE is a single token containing
+       the executable name and all parameters.  Tokens within COMMAND-LINE
+       must be separated by one or more spaces.
+
+  -NAME name
+
+       Sets the menu entry name as it will be displayed when the menu is
+       viewed by the user.  The default is the generic leafname of the
+       program.  For example, if the program filename is
+       "/mystuff/progs/beep.exe", then the default menu entry name will be
+       "beep".  A menu entry name is always required, so either the
+       program name (-PROG command line option) or the menu entry name
+       must be explicitly specified.
+
+  -MENU id
+
+       Specifies the root menu to add or delete the menu entry in.  Some
+       operating systems may have more than one menu that are in different
+       locations or activated differently.  ID must be one of the
+       following:
+
+       PROGS
+
+         The normal menu for programs, available to all users.
+
+       PROGSU
+
+         The normal menu for programs, available to only the current user.
+
+       DESK
+
+         The "desktop", available to all users.
+
+       DESKU
+
+         The "desktop", available to only the current user.
+
+       The exact implementation and interpretation of the above choices is
+       system dependent.  The default is PROGS.
+
+  -SUB path
+
+       Sets the path of the menu entry within the root menu as specified
+       by -MENU.  Menus often have submenues, and PATH indicates the
+       submenu location of the menu entry.  The empty string indicates the
+       root of the selected menu.  Results are undefined if PATH is
+       non-blank and the selected menu is inherently flat (there are no
+       submenus).
+
+       All necessary submenus are created before the menu entry is
+       created.
+
+  -WDIR directory
+
+       Sets the directory the program is to run in when the menu entry is
+       activated.  This information is associated with the menu entry to
+       the extent that is possible on the particular operating system.
+       Embed Inc file name translation rules will be applied to DIRECTORY,
+       and the resulting absolute pathname associated with the menu entry.
+
+  -DESC string
+
+       Sets the menu entry description string if it is possible to
+       associate description strings with system menu entries.  The
+       description string must be a single command line parameter, which
+       generally means it must be enclosed in quotes ("") or ('') on most
+       command shells if it contains any spaces or special characters.
+
+  -ICON filename
+
+       Sets the icon to display for the menu entry.  Note that when and if
+       the system will display this icon is highly system-dependent.  Menu
+       entry icons may not be supported at all on some systems.  Embed Inc
+       file name translation rules will be applied to FILENAME, and the
+       resulting absolute pathname associated with the menu entry.
+
+       FILENAME must be the complete file name of a image file.  The
+       allowed image file format can vary between operating systems.  On
+       Windows systems, the icon must be a .bmp file.
+
+  -DEL
+
+       Delete the menu entry if it exists.  The default is to create or
+       overwrite the specified menu entry.  No error is generated if -DEL
+       is specified and the menu entry does not exist.
+
+  -SHOW
+
+       Show the information that will be used to create the menu entry
+       immediately before creating it.

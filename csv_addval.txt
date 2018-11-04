@@ -1,0 +1,25 @@
+                            Program CSV_ADDVAL
+                               30 July 2012
+
+
+csv_addval csv1 csv2 name2 [name1] [add]
+
+Adds the values for the column NAME2 from CSV file 2 as the last dependent
+variable to CSV file 1.  NAME2 is case-insensitive.  If NAME1 is provided,
+then it will be the name given to the new value in the updated CSV file.
+Otherwise, the name as found in CSV file 2 is used.
+
+NAME2 must not be the name of the independent variable (first column) of
+CSV file 2.  The variable value from CSV file 2 is linearly interpolated
+as neccessary to the independent variable values in CSV file 1.  The two
+CSV files therefore need not have points with exactly matching independent
+variable values, but new data is only written at the existing independent
+variable values of CSV file 1.
+
+If ADD is provided, it must be a numeric value and will be added to the
+input value to make the output value.
+
+If CSV file 1 does not previously exist or is effectively empty, then it
+will be created using both the independent and dependent variable values
+from CSV file 2.  Only the independent and the variable NAME2 will be
+written, regardless of what other information may be in CSV file 2.

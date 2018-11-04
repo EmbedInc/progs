@@ -1,0 +1,14 @@
+                           Program TEXT_HTM
+                           20 November 2005
+
+text_htm <input file name> [<output file name>]
+
+Create an HTML file from a raw text file.  The text will be displayed in
+the HTML file just like it appears in the text file.  If the input file
+contains any HTML tags, browsers will display these verbatim and not
+interpret them.
+
+The default output file name is the leafname of the input file with ".htm"
+appended.  The output file name will always end in ".htm" even when an
+output file name is supplied on the command line and it does not end in
+".htm".
