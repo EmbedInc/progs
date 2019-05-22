@@ -1,0 +1,56 @@
+                            Program MAKE_DEBUG
+                               21 May 2019
+
+make_debug filename [name ... name]
+
+This program is intended to be part of the process of building various
+types of objects.  These include firmware, host programs, host libraries,
+environment files, etc.  See the DEBUG documentation file for a overview
+of how debugging options are defined and enabled in the Embed build
+system.
+
+The command line NAME parameters, and the list of keywords in the DEBUG
+environment variable are taken as a list of debug options.  Any debug
+option listed in the DEBUG environment variable is enabled.  Any debug
+option listed on the command line but not in the DEBUG environment
+variable is disabled.
+
+The FILENAME parameter is the name of the file to write.  This will
+contain the definition of a constant DEBUG_xxx for each of the debug
+options.  The suffix of FILENAME determines the language the constant
+definitions will be written in.  The recognized suffixes are:
+
+  .bat
+
+    Windows BAT file.  Environment variables will be created with values
+    of either "true" or "false".
+
+  .aspic
+  .dspic
+
+    PIC preprocessor file.  Bool constants will be created with values of
+    True or False.
+
+  .pas
+
+    Pascal.  A CONST statement is written with each constant set to either
+    TRUE or FALSE.
+
+  .h
+
+    C language include file.  A #define statement is written for each
+    debug option.  Each constant is set to either "(0)" for disabled, or
+    "(1)" for enabled.
+
+  .es
+  .escr
+
+    Embed ESCR script.  Bool constants are created with values of True or
+    False.
+
+  <anything else>
+
+    If FILENAME does not end in one of the recognized suffixes above, then
+    a plain text file is written.  Each line will start with "DEBUG_xxx",
+    where XXX is replaced by the name of a debug option.  Then a space is
+    written, followed by either TRUE or FALSE.

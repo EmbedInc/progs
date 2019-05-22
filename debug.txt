@@ -1,0 +1,82 @@
+                        Embed build debug switches
+                               21 May 2019
+
+In the Embed build system, control of production mode or debugging is done
+by the user setting the DEBUG environment variable.  This variable
+contains a list of case-insensitive keywords, separated by spaces.  Each
+keyword enables a specific debugging option.  A production build is
+indicated by the DEBUG environment variable not existing, being set to the
+empty string, or containing the single debug option FALSE.
+
+In general, the specific debug options supported by a particular build
+procedure are up to that build procedure.  However, a limited set of debug
+options are handled specially or are used in a standard way.
+
+Debug options that are handled specially:
+
+  FALSE
+
+    Disables all debugging.  FALSE is not really a debug option, and can
+    not be combined with debug options.  When FALSE is used, it must be
+    the only contents of the DEBUG environment variable.
+
+    Explicitly specifying the FALSE debug option is the same as having the
+    DEBUG environment variable contain the empty string, or the DEBUG
+    environment variable not existing.
+
+  TRUE
+
+    Enable general source level debugging.  This means, to the extent
+    reasonable and possible, that the resulting code can be debugged at
+    the source level in whatever IDE is associated with the build tools.
+    For Microchip PIC firmware, for example, this means that the code can
+    be single stepped in MPLAB using a in-circuit debugger like the
+    RealIce, ICD3, etc.  For PC code built with the Microsoft tools, it
+    means that the code can be single stepped in Visual Studio.
+
+    Any specific and known debug options that are implied by TRUE are
+    automatically created and enabled.  Currently, TRUE also implies:
+
+      ICD VS
+
+    Inidividual build procedures may enable other options in response to
+    TRUE being enabled.
+
+    This option may not be relevant for some types of objects, like
+    documentation files.  The build procedures for such objects simply
+    ignore this option.
+
+Debug options used in a standard way:
+
+  ICD
+
+    Builds firmware so that it can be debugged using a in-circuit
+    debugger.  The firmware need not be debuggable with other means, like
+    a simulator.
+
+  SIM
+
+    Builds firmware so that it can be debugged with a simulator.  The
+    firmware need not be debuggable with other means, like a in-circuit
+    debugger.
+
+  VS
+
+    For any code built with Microsoft Visual Studio tools, this builds the
+    code so that it can be debugged at the source level in Visual Studio.
+
+All debug options listed in the DEBUG environment variable are enabled.
+Some build procedures may supply a list of debug options they support.
+When this is done, those options are always created, but are disabled
+unless they are also listed in the DEBUG environment variable.
+
+Debug options are made available to the build process, and to the code
+being built to the extent possible.  For each debug option, a constant or
+variable is created named DEBUG_xxx, where xxx is the name of the debug
+option.  These are boolean constants or variables to the extent possible.
+Their values are TRUE when the option is enabled, and FALSE when not.
+
+In addition to the DEBUG_xxx constants for each known debug options, the
+constant (or variable if necessary) DEBUGANY is also created.  This is
+TRUE if any debug option is enabled.  It is FALSE when no debug options
+are enabled (production release).

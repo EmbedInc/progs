@@ -34,6 +34,7 @@ call src_prog %srcdir% hex_dump %1
 call src_prog %srcdir% instek_dump %1
 call src_prog %srcdir% l %1
 call src_prog %srcdir% macadr %1
+call src_prog %srcdir% make_debug %1
 call src_prog %srcdir% menu_entry %1
 call src_prog %srcdir% mort %1
 call src_prog %srcdir% mxlookup %1
