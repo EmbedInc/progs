@@ -17,8 +17,8 @@ variable is disabled.
 
 The FILENAME parameter is the name of the file to write.  This will
 contain the definition of a constant DEBUG_xxx for each of the debug
-options.  The suffix of FILENAME determines the language the constant
-definitions will be written in.  The recognized suffixes are:
+options, plus DEBUGGING.  The suffix of FILENAME determines the language
+the constant definitions will be written in.  The recognized suffixes are:
 
   .bat
 

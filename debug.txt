@@ -77,6 +77,6 @@ option.  These are boolean constants or variables to the extent possible.
 Their values are TRUE when the option is enabled, and FALSE when not.
 
 In addition to the DEBUG_xxx constants for each known debug options, the
-constant (or variable if necessary) DEBUGANY is also created.  This is
+constant (or variable if necessary) DEBUGGING is also created.  This is
 TRUE if any debug option is enabled.  It is FALSE when no debug options
 are enabled (production release).

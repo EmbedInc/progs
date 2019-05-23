@@ -44,6 +44,7 @@ var
     %include '(cog)lib/string132.ins.pas';
   ndbg: sys_int_machine_t;             {number of options found in DEBUG var}
   dbg_off: boolean;                    {debugging is globally disabled}
+  dbg_any: boolean;                    {at least one debug option is enabled}
   stat: sys_err_t;                     {completion status}
 {
 ********************************************************************************
@@ -313,6 +314,7 @@ begin
 begin
   string_cmline_init;                  {init for reading the command line}
   dbg_off := false;                    {init to debugging not globally disabled}
+  dbg_any := false;                    {init to no debug option is enabled}
 {
 *   Get the output file name from the command line and determine the output
 *   format based on the file name suffix.  The suffix is the part of the file
@@ -397,6 +399,7 @@ otherwise
     string_append (name, opt);
     opt_p := entry (name);             {get pointer to the entry with this name}
     opt_p^.enab := true;               {mark this debug option as enabled}
+    dbg_any := true;                   {at least one debug option is enabled}
 
     if string_equal (opt, string_v('TRUE')) then begin {special case of TRUE option ?}
       string_vstring (name, 'DEBUG_ICD'(0), -1); {TRUE implies ICD}
@@ -407,6 +410,12 @@ otherwise
       opt_p^.enab := true;
       end;
     end;                               {back to get next debug option name}
+{
+*  Create DEBUGGING.
+}
+  string_vstring (name, 'DEBUGGING'(0), -1);
+  opt_p := entry (name);               {get pointer to DEBUGGING list entry}
+  opt_p^.enab := dbg_any;              {TRUE if any debug option is enabled}
 {
 *   Write the output file.
 }
