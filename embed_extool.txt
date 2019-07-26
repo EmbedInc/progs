@@ -1,30 +1,19 @@
                            Program EMBED_EXTOOL
-                               24 June 2010
+                               26 July 2019
 
 
 embed_extool
 
-Installs hooks from the Embed Inc environment to external tools.  The
-hooks include environment variable settings, symbolic links, etc.
+Installs hooks from the Embed Inc environment to external tools.  Most
+hooks are symbolic links in the Embed EXTERN tree to the actual location
+of specific files wherever they might be installed.
+
 Currently hooks for the following tools are installed.
 
   Microchip MPLAB
 
-    MPLAB can be installed into any directory.  If C30 is used, it must be
-    installed to the "MPLAB ASM30 Suite" directory within the MPLAB
-    installation directory.  Several environment variables and symbolic
-    links are created or updated so that the Embed Inc build scripts can
-    find the MPLAB tools.  These tools are required for building PIC
+    These hooks are required for building and debugging PIC and dsPIC
     firmware.
-
-  Microsoft Visual C++ 6.0
-
-    This compiler is used to build host code for Windows systems.  Several
-    environment variables are created or updated.  A directory in the
-    Visual Studio part of the installation is also added to the command
-    search path.  The compiler and linker can't work without that, even
-    when Visual Studio is not run.  Some of the executables apparently
-    require DLLs from this directory.
 
   /TEMP directory
 
