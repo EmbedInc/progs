@@ -19,7 +19,9 @@ type
 var
   reboot: boolean;                     {state was changed that requires reboot}
   clist: string_list_t;                {list of candidate directory treenames}
-  clist_open: boolean;                 {string list CLIST has been initialized}
+  clist_open: boolean;                 {list CLIST has been initialized}
+  notdir: string_list_t;               {list of disallowed subdirectories}
+  notdir_open: boolean;                {list NOTDIR has been initialized}
   tnam, tnam2:                         {scratch pathnames}
     %include '(cog)lib/string_treename.ins.pas';
   swinst:                              {installation directory of the ext software}
@@ -27,14 +29,14 @@ var
   ii: sys_int_machine_t;               {scratch integer}
   tk:                                  {scratch token}
     %include '(cog)lib/string80.ins.pas';
-  mplab_installed: boolean;
-
+  finfo: file_info_t;                  {information about a file}
+  time: sys_clock_t;                   {scratch time value}
   msg_parm:                            {parameter references for messages}
     array[1..max_msg_parms] of sys_parm_msg_t;
   stat: sys_err_t;
 
 label
-  retry_mplab, done_mplab;
+  retry_mplab8, done_mplab8, retry_mplab16, done_mplab16;
 {
 ********************************************************************************
 *
@@ -54,6 +56,44 @@ begin
   string_list_init (clist, util_top_mem_context); {create the list}
   clist_open := true;                  {list now exists}
   end;
+{
+********************************************************************************
+*
+*   Subroutine NOTDIR_INIT
+*
+*   Create and initialize the global strings list NOTDIR.  If NOTDIR already
+*   exists, then it is first deleted before being re-created.
+}
+procedure notdir_init;                 {create and init NOTDIR}
+  val_param; internal;
+
+begin
+  if notdir_open then begin            {the list already exists ?}
+    string_list_kill (notdir);         {not anymore}
+    end;
+
+  string_list_init (notdir, util_top_mem_context); {create the list}
+  notdir_open := true;                 {list now exists}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine NOTDIR_NONE
+*
+*   Make sure the list of disallowed subdirectories does not exist.  If the list
+*   exists, it is deleted.
+}
+(*
+procedure notdir_none;                 {make sure NOTDIR does not exist}
+  val_param; internal;
+
+begin
+  if notdir_open then begin            {the list exists ?}
+    string_list_kill (notdir);         {delete it}
+    notdir_open := false;
+    end;
+  end;
+*)
 {
 ********************************************************************************
 *
@@ -81,6 +121,11 @@ begin
 *       The file system object being searched for may be a directory.  In that
 *       case, the resulting LIST entry will be the complete treename of the
 *       directory.
+*
+*   If the list NOTDIR exists, as indicated by NOTDIR_OPEN, then it is taken as
+*   a list of directories that are not allowed.  When a subdirectory is found
+*   that matches at least one of the NOTDIR entries, that subdirectory is
+*   ignored.
 }
 procedure search_for_obj (             {search for file system objects of a name}
   in      tree: string_treename_t;     {root directory of tree to search in}
@@ -115,6 +160,9 @@ var
   fnam: string_leafname_t;             {name of this directory entry}
   tnam: string_treename_t;             {treename of current directory entry}
   finfo: file_info_t;                  {info about current directory entry}
+
+label
+  next_ent;
 
 begin
   fnam.max := size_char(fnam.str);     {init local var strings}
@@ -159,10 +207,22 @@ file_type_dir_k: begin                 {subdirectory}
         if lev <= tree_lev_show then begin {show this directory as search activity ?}
           writeln ('':(lev*2), fnam.str:fnam.len);
           end;
+        {
+        *   Ignore this entry if it matches a disallowed subdirectory name.
+        }
+        if notdir_open then begin      {there is a list of disallowed dirs ?}
+          string_list_pos_abs (notdir, 1); {go to first list entry}
+          while notdir.str_p <> nil do begin {scan list of disallowed dirs}
+            if string_equal (fnam, notdir.str_p^) {matches disallowed ?}
+              then goto next_ent;      {ignore this directory entry}
+            string_list_pos_rel (notdir, 1); {to next disallowed name}
+            end;
+          end;
         process_dir (tnam, lev+1, stat); {process subdirectory recursively}
         end;
 
       end;                             {end of object type cases}
+next_ent:                              {done with this directory entry, advance to next}
     end;                               {back to do next directory entry}
 
   file_close (conn);                   {close the directory}
@@ -347,33 +407,37 @@ begin
 
   reboot := false;                     {init to reboot not required}
   clist_open := false;                 {list of candidate directories is not open}
-  mplab_installed := false;            {init to MPLAB hooks not installed}
+  notdir_open := false;                {init to no list of disallowed directories}
 
 {*******************************************************************************
 *
-*   Set up hooks for MPLAB 8 bit tools.
+*   Set up hooks for MPLAB and the 8 bit tools.
 }
-retry_mplab:
+retry_mplab8:
   writeln;
-  sys_message ('stuff', 'inst_ask_mplab');
+  sys_message ('stuff', 'inst_mplab_ask');
   string_prompt (string_v('>> '));
   string_readin (tnam);
   string_unpad (tnam);                 {remove trailing spaces}
   if tnam.len = 0 then begin           {entered blank ?}
     sys_message ('stuff', 'inst_mplab_fail');
-    goto done_mplab;
+    goto done_mplab8;
     end;
 
   clist_init;                          {init search results list}
+  notdir_init;                         {create list of disallowed directories}
+  string_list_str_add (notdir,
+    string_v('rollbackBackupDirectory'(0))
+    );
 
   search_for_obj (                     {search for dir holding the tools}
     tnam,                              {top of tree to search in}
     'mpasmx',                          {name to search for}
     clist,                             {list to add results to}
-    [objtype_dir_k],                   {search target it directory}
+    [objtype_dir_k],                   {search target is directory}
     stat);
   if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
-    goto retry_mplab;                  {back and ask the user again}
+    goto retry_mplab8;                 {back and ask the user again}
     end;
 {
 *   This list of candidate directories matching the search name is in CLIST.
@@ -389,7 +453,7 @@ retry_mplab:
 
   if clist.n = 0 then begin            {no matching directories found ?}
     sys_message ('stuff', 'inst_nodirs'); {complain about it}
-    goto retry_mplab;                  {go back and ask again}
+    goto retry_mplab8;                 {go back and ask again}
     end;
 {
 *   Check for more than one suitable directory was found.  Make the user pick
@@ -415,7 +479,7 @@ retry_mplab:
       if tk.len <= 0 then next;        {no answer, ask again ?}
       string_t_int (tk, ii, stat);     {try to interpret response as integer}
       if sys_error(stat) then next;    {invalid response, ask again ?}
-      if ii = 0 then goto retry_mplab; {back for another search ?}
+      if ii = 0 then goto retry_mplab8; {back for another search ?}
       if (ii >= 1) and (ii <= clist.n) {got a valid answer ?}
         then exit;
       end;
@@ -448,7 +512,163 @@ retry_mplab:
   extern_link ('mplab/mplink.exe', 'mpasmx/mplink.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
-done_mplab:
+done_mplab8:
+
+{*******************************************************************************
+*
+*   Set up hooks for MPLAB 16 bit tools.
+}
+retry_mplab16:
+  writeln;
+  sys_message ('stuff', 'inst_mplab16_ask');
+  string_prompt (string_v('>> '));
+  string_readin (tnam);
+  string_unpad (tnam);                 {remove trailing spaces}
+  if tnam.len = 0 then begin           {entered blank ?}
+    sys_message ('stuff', 'inst_mplab_fail');
+    goto done_mplab16;
+    end;
+
+  clist_init;                          {init search results list}
+  notdir_init;                         {create list of disallowed directories}
+  string_list_str_add (notdir,
+    string_v('rollbackBackupDirectory'(0))
+    );
+
+  search_for_obj (                     {search for dir holding the tools}
+    tnam,                              {top of tree to search in}
+    'xc16-gcc.exe',                    {name to search for}
+    clist,                             {list to add results to}
+    [objtype_file_k],                  {search target is a file}
+    stat);
+  if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
+    goto retry_mplab16;                {back and ask the user again}
+    end;
+{
+*   The list of directories containing the named file is in CLIST.
+*   Now apply additional criteria to possibly narrow the list.
+}
+  string_list_pos_abs (clist, 1);      {go to first list entry}
+  while clist.str_p <> nil do begin    {scan all the list entries}
+    if not required_file ('xc16-as.exe') then next;
+    if not required_file ('xc16-ar.exe') then next;
+    if not required_file ('xc16-ranlib.exe') then next;
+    if not required_file ('xc16-ld.exe') then next;
+    if not required_file ('xc16-bin2hex.exe') then next;
+    string_list_pos_rel (clist, 1);    {this dir checks out, advance to next}
+    end;
+
+  if clist.n = 0 then begin            {no matching directories found ?}
+    sys_message ('stuff', 'inst_nodirs'); {complain about it}
+    goto retry_mplab16;                {go back and ask again}
+    end;
+{
+*   If there are multiple directories, keep only those with the most recent time
+*   stamp on the C compiler (XC16-GCC.EXE).
+}
+  if clist.n > 1 then begin            {found more than one directory ?}
+    string_list_pos_abs (clist, 1);    {go to first list entry}
+    string_copy (clist.str_p^, tnam);  {build pathname of the C compiler}
+    string_appends (tnam, '/xc16-gcc.exe'(0));
+    file_info (tnam, [file_iflag_dtm_k], finfo, stat); {get compiler date}
+    sys_error_abort (stat, '', '', nil, 0);
+    time := finfo.modified;            {init time of newest file so far}
+    while true do begin                {scan the remaining list entries}
+      string_list_pos_rel (clist, 1);  {advance to next list entry}
+      if clist.str_p = nil then exit;  {hit end of list ?}
+      string_copy (clist.str_p^, tnam); {build pathname of the C compiler}
+      string_appends (tnam, '/xc16-gcc.exe'(0));
+      file_info (tnam, [file_iflag_dtm_k], finfo, stat); {get compiler date}
+      sys_error_abort (stat, '', '', nil, 0);
+      if sys_clock_compare(finfo.modified, time) {newer ?}
+          = sys_compare_gt_k then begin
+        time := finfo.modified;        {update newest file found so far}
+        end;
+      end;                             {back to check next list entry}
+    {
+    *   The time of the newest C compiler executable file is in TIME.  Now
+    *   delete all list entries that do not match this time.
+    }
+    string_list_pos_abs (clist, 1);    {go to first list entry}
+    while clist.str_p <> nil do begin  {scan all the list entries}
+      string_copy (clist.str_p^, tnam); {build pathname of the C compiler}
+      string_appends (tnam, '/xc16-gcc.exe'(0));
+      file_info (tnam, [file_iflag_dtm_k], finfo, stat); {get compiler date}
+      sys_error_abort (stat, '', '', nil, 0);
+      if sys_clock_compare(finfo.modified, time)
+          = sys_compare_eq_k
+        then begin                     {latest time, keep this entry}
+          string_list_pos_rel (clist, 1); {advance to next entry}
+          end
+        else begin                     {different time, delete this entry}
+          string_list_line_del (clist, true); {delete this, advance to next}
+          end
+        ;
+      end;                             {back to process this new entry}
+    end;
+{
+*   Check for more than one suitable directory was found.  Make the user pick
+*   the right one.
+}
+  ii := 1;                             {init to list entry number to use}
+
+  if clist.n > 1 then begin            {multiple matches found ?}
+    writeln;
+    sys_message ('stuff', 'inst_dirs_mult');
+
+    while true do begin                {keep asking user until get resolution}
+      writeln;
+      string_list_pos_abs (clist, 1);  {go to first list entry}
+      while clist.str_p <> nil do begin {once for each list entry}
+        writeln (clist.curr, ': ', clist.str_p^.str:clist.str_p^.len);
+        string_list_pos_rel (clist, 1); {advance to next list entry}
+        end;
+      writeln;
+      sys_message ('stuff', 'inst_dirs_pick'); {tell user to pick a directory}
+      string_prompt (string_v('>> '));
+      string_readin (tk);              {get the user's response into TK}
+      if tk.len <= 0 then next;        {no answer, ask again ?}
+      string_t_int (tk, ii, stat);     {try to interpret response as integer}
+      if sys_error(stat) then next;    {invalid response, ask again ?}
+      if ii = 0 then goto retry_mplab16; {back for another search ?}
+      if (ii >= 1) and (ii <= clist.n) {got a valid answer ?}
+        then exit;
+      end;
+    end;
+
+  string_list_pos_abs (clist, ii);     {go to the selected list entry}
+  string_copy (clist.str_p^, swinst);  {save directory the target got installed in}
+  string_list_kill (clist);            {delete the candidate directories list}
+  clist_open := false;
+
+  writeln;
+  sys_msg_parm_vstr (msg_parm[1], swinst);
+  sys_message_parms ('stuff', 'inst_mplab16_found', msg_parm, 1);
+{
+*   The MPLAB 16 bit tool executables are in SWINST.
+}
+  ensure_dir ('(cog)extern/mplab', stat); {make sure this EXTERN subdir exists}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/asm16.exe', 'xc16-as.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/lib16.exe', 'xc16-ar.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/index16.exe', 'xc16-ranlib.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/link16.exe', 'xc16-ld.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/bin_hex16.exe', 'xc16-bin2hex.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/ccomp16.exe', 'xc16-gcc.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+done_mplab16:
 
 {*******************************************************************************
 *
