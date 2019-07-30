@@ -667,6 +667,32 @@ retry_mplab16:
 
   extern_link ('mplab/ccomp16.exe', 'xc16-gcc.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
+{
+*   Install links to the linker file directories.  These are in SUPPORT/name,
+*   which is at the same level as the BIN directory the 16 bit tool executables
+*   are in.
+}
+  string_pathname_split (swinst, tnam, tnam2); {get parent dir into TNAM}
+  string_appends (tnam, '/support'(0)); {go into SUPPORT subdirectory}
+  string_treename (tnam, swinst);      {switch to the 16 bit tools SUPPORT dir}
+
+  extern_link ('mplab/gld24e', 'PIC24E/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/gld24f', 'PIC24F/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/gld24h', 'PIC24H/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/gld30f', 'dsPIC30F/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/gld33e', 'dsPIC33E/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/gld33f', 'dsPIC33F/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab16:
 
