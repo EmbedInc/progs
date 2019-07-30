@@ -671,13 +671,23 @@ retry_mplab16:
   extern_link ('mplab/ccomp16.exe', 'xc16-gcc.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 {
-*   Install links to the linker file directories.  These are in SUPPORT/name,
-*   which is at the same level as the BIN directory the 16 bit tool executables
-*   are in.
+*   Add links for targets above the BIN directory.  SWINST currently contains
+*   the pathname of the BIN directory.
 }
-  string_pathname_split (swinst, tnam, tnam2); {get parent dir into TNAM}
-  string_appends (tnam, '/support'(0)); {go into SUPPORT subdirectory}
-  string_treename (tnam, swinst);      {switch to the 16 bit tools SUPPORT dir}
+  string_pathname_split (swinst, tnam, tnam2); {switch to parent of current dir}
+  string_treename (tnam, swinst);
+
+  extern_link ('mplab/support16', 'support', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/lib16', 'lib', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+*   Install links to the linker file directories.  These are in SUPPORT/name.
+}
+  string_copy (swinst, tnam);          {go down into the SUPPORT directory}
+  string_appends (tnam, '/support'(0));
+  string_treename (tnam, swinst);
 
   extern_link ('mplab/gld24e', 'PIC24E/gld', stat);
   sys_error_abort (stat, '', '', nil, 0);
@@ -695,12 +705,6 @@ retry_mplab16:
   sys_error_abort (stat, '', '', nil, 0);
 
   extern_link ('mplab/gld33f', 'dsPIC33F/gld', stat);
-  sys_error_abort (stat, '', '', nil, 0);
-{
-*   Add the SUPPORT link.  SWINST currently contains the pathname of the
-*   SUPPORT directory.
-}
-  extern_link ('mplab/support16', '', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab16:
