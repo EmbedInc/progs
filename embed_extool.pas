@@ -389,8 +389,11 @@ begin
   string_appends (name, extname);      {make full link name}
 
   string_copy (swinst, tnam);          {init fixed part of link value}
-  string_append1 (tnam, '/');          {make full link value}
-  string_appends (tnam, swintarg);
+  string_vstring (targ, swintarg, size_char(swintarg)); {make var string arg}
+  if targ.len > 0 then begin           {SWINTARG not the empty string ?}
+    string_append1 (tnam, '/');        {make full link value}
+    string_append (tnam, targ);
+    end;
   string_treename (tnam, targ);        {make absolute link value}
 
   file_link_create (                   {create the link}
@@ -692,6 +695,12 @@ retry_mplab16:
   sys_error_abort (stat, '', '', nil, 0);
 
   extern_link ('mplab/gld33f', 'dsPIC33F/gld', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+*   Add the SUPPORT link.  SWINST currently contains the pathname of the
+*   SUPPORT directory.
+}
+  extern_link ('mplab/support16', '', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab16:
