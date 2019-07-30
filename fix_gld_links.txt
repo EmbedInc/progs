@@ -1,0 +1,39 @@
+                          Program FIX_GLD_LINKS
+                               30 July 2019
+
+fix_gld_links <options>
+
+Fix the links to the Microchip 16 bit linker files in the various source
+code directories.
+
+Previously, there were links in the SOURCE/DSPIC directory called gld24e,
+gld24f, gld24h, gld30f, gld33e, and gld33f.  These pointed to the
+directories in the MPLAB software installation directory where the linker
+files to the various 16 bit PIC types were kept.  These links were
+manually adjusted according to where the 16 bit tools were installed.
+
+The method for finding any parts of the Microchip tools was changed on 30
+Jul 2019.  The EMBED_EXTOOL program was updated to find where the various
+MPLAB components are installed, and create links to them in the
+EXTERN/MPLAB directory within the Embed software installation directory.
+The GLDxxx links are now in this directory, created automatically by
+EMBED_EXTOOL.  For example, the portable reference to the directory
+containing the dsPIC33E linker files is now "(cog)extern/mplab/gld33e".
+
+The program scans the whole tree rooted at the current directory looking
+for old 16 bit linker file links, and updates them to the new portable
+target path.  This program only needs to be run once, in the (cog)source
+directory.
+
+For any link that should be changed, the full link pathname and the
+desired new link expansion are shown.  This is done whether the link is
+actually changed or not.
+
+No GIT updates are performed.  This is the user's responsibility.
+
+The command line options are:
+
+  -SHOW
+
+    Only show the links that need to be changed.  The default is to make
+    the changes.
