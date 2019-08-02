@@ -8,7 +8,7 @@ program embed_extool;
 
 const
   max_msg_parms = 2;                   {max parameters we can pass to a message}
-  tree_lev_show = 3;                   {levels into tree to show search dirs}
+  tree_lev_show = 2;                   {levels into tree to show search dirs}
 
 type
   objtype_k_t = (                      {list of search modifier flags}
@@ -22,21 +22,31 @@ var
   clist_open: boolean;                 {list CLIST has been initialized}
   notdir: string_list_t;               {list of disallowed subdirectories}
   notdir_open: boolean;                {list NOTDIR has been initialized}
+  show_search: boolean;                {enabled showing search progress to user}
   tnam, tnam2:                         {scratch pathnames}
     %include '(cog)lib/string_treename.ins.pas';
+  lnam:                                {scratch leafname}
+    %include '(cog)lib/string_leafname.ins.pas';
   swinst:                              {installation directory of the ext software}
     %include '(cog)lib/string_treename.ins.pas';
+  buf:                                 {one line buffer, command line, etc}
+    %include '(cog)lib/string8192.ins.pas';
   ii: sys_int_machine_t;               {scratch integer}
   tk:                                  {scratch token}
     %include '(cog)lib/string80.ins.pas';
   finfo: file_info_t;                  {information about a file}
   time: sys_clock_t;                   {scratch time value}
+  tf: boolean;                         {True/False returned by subordinate program}
+  exstat: sys_sys_exstat_t;            {subordinate program's exit status code}
+
   msg_parm:                            {parameter references for messages}
     array[1..max_msg_parms] of sys_parm_msg_t;
   stat: sys_err_t;
 
 label
-  retry_mplab8, done_mplab8, retry_mplab16, done_mplab16;
+  retry_mplab8, done_mplab8, retry_mplab16, done_mplab16,
+  retry_msvc, msvc_dir_ok1, msvc_dir_keep, msvc_dir_del,
+  done_msvcdbg, done_msvc;
 {
 ********************************************************************************
 *
@@ -83,7 +93,6 @@ begin
 *   Make sure the list of disallowed subdirectories does not exist.  If the list
 *   exists, it is deleted.
 }
-(*
 procedure notdir_none;                 {make sure NOTDIR does not exist}
   val_param; internal;
 
@@ -93,19 +102,21 @@ begin
     notdir_open := false;
     end;
   end;
-*)
 {
 ********************************************************************************
 *
-*   Subroutine SEARCH_FOR_OBJ (TREE, NAME, LIST, OBJTYPE, STAT)
+*   Subroutine SEARCH_FOR_OBJ (TREE, NAME, OBJTYPE, STAT)
 *
 *   Search for file system objects of a particular name within a directory tree.
 *   TREE is the root of the directory tree to search within.
 *
-*   NAME is the name of the object to search for.  NAME is a Pascal string.
+*   NAME is the name of the object to search for.  NAME is a Pascal string.  The
+*   search is performed case-independently.
 *
-*   The treenames of objects matching the criteria are added to the end of the
-*   strings list LIST.  LIST must be previously initialized.
+*   The treenames of objects matching the criteria are written to the strings
+*   list CLIST.  CLIST will be initialized, then any search results added.  The
+*   previous state of CLIST is irrelevant (as long as it is correctly indicated
+*   by CLIST_OPEN).
 *
 *   OBJTYPE is a set of flags that indicate the matching file system object
 *   types:
@@ -126,11 +137,14 @@ begin
 *   a list of directories that are not allowed.  When a subdirectory is found
 *   that matches at least one of the NOTDIR entries, that subdirectory is
 *   ignored.
+*
+*   If the global switch SHOW_SEARCH is set to TRUE, then search progress is
+*   shown to the user.  This is the default.  If SHOW_SEARCH is FALSE, then the
+*   search is performed silently this time, but SHOW_SEARCH is reset to TRUE.
 }
 procedure search_for_obj (             {search for file system objects of a name}
   in      tree: string_treename_t;     {root directory of tree to search in}
   in      name: string;                {name that objects must match}
-  in out  list: string_list_t;         {results will be added to this list}
   in      objtype: objtype_t;          {types of matching file system objs}
   out     stat: sys_err_t);            {completion status}
   val_param; internal;
@@ -158,21 +172,24 @@ procedure process_dir (                {process a directory tree}
 var
   conn: file_conn_t;                   {connection to the directory}
   fnam: string_leafname_t;             {name of this directory entry}
+  fnamu: string_leafname_t;            {upper case directory entry name}
   tnam: string_treename_t;             {treename of current directory entry}
   finfo: file_info_t;                  {info about current directory entry}
+  added_dir: boolean;                  {already added this directory as result}
 
 label
   next_ent;
 
 begin
   fnam.max := size_char(fnam.str);     {init local var strings}
+  fnamu.max := size_char(fnamu.str);
   tnam.max := size_char(tnam.str);
+  added_dir := false;                  {init to this directory not a search result}
 
   file_open_read_dir (dir, conn, stat); {open the root directory}
   if sys_error(stat) then return;
 
   while true do begin                  {loop over the entries of this directory}
-    tnam.len := 0;                     {init to dir entry pathname not set}
     file_read_dir (                    {get next entry in this directory}
       conn,                            {connection to the directory}
       [file_iflag_type_k],             {we need to know type of this entry}
@@ -185,26 +202,34 @@ begin
 
 file_type_data_k: begin                {ordinary file}
         if
-            (objtype_file_k in objtype) and then {searching for a file ?}
-            string_equal(fnam, snam)   {matches the search name ?}
+            (not added_dir) and        {didn't already add this directory ?}
+            (objtype_file_k in objtype) {searching for a file ?}
             then begin
-          list.size := conn.tnam.len;
-          string_list_line_add (list); {create new list entry}
-          string_copy (conn.tnam, list.str_p^); {fill in new list entry}
+          string_upcase (fnam);        {upper case for case-insensitive matching}
+          if string_equal(fnam, snam) then begin
+            string_list_str_add (clist, conn.tnam); {add dir to results list}
+            added_dir := true;         {this directory has been added as search result}
+            end;                       {end of name matches search pattern}
+
           end;
-        end;
+        end;                           {end of this object is a file case}
 
 file_type_dir_k: begin                 {subdirectory}
+        string_copy (fnam, fnamu);     {make upper case version of entry name}
+        string_upcase (fnamu);
         string_pathname_join (conn.tnam, fnam, tnam); {make treename of subdirectory}
+
         if
             (objtype_dir_k in objtype) and then {searching for a directory ?}
-            string_equal(fnam, snam)   {matches the search name ?}
+            string_equal(fnamu, snam)  {matches the search name ?}
             then begin
-          list.size := tnam.len;
-          string_list_line_add (list); {create new list entry}
-          string_copy (tnam, list.str_p^); {fill in new list entry}
+          string_list_str_add (clist, tnam); {add this dir to results list}
           end;
-        if lev <= tree_lev_show then begin {show this directory as search activity ?}
+
+        if                             {show this directory as search activity ?}
+            show_search and
+            (lev <= tree_lev_show)
+            then begin
           writeln ('':(lev*2), fnam.str:fnam.len);
           end;
         {
@@ -213,11 +238,12 @@ file_type_dir_k: begin                 {subdirectory}
         if notdir_open then begin      {there is a list of disallowed dirs ?}
           string_list_pos_abs (notdir, 1); {go to first list entry}
           while notdir.str_p <> nil do begin {scan list of disallowed dirs}
-            if string_equal (fnam, notdir.str_p^) {matches disallowed ?}
+            if string_equal (fnamu, notdir.str_p^) {matches disallowed ?}
               then goto next_ent;      {ignore this directory entry}
             string_list_pos_rel (notdir, 1); {to next disallowed name}
             end;
           end;
+
         process_dir (tnam, lev+1, stat); {process subdirectory recursively}
         end;
 
@@ -236,13 +262,23 @@ begin
   tnam.max := size_char(tnam.str);     {init local var string}
   snam.max := size_char(snam.str);
 
+  clist_init;                          {init search results list}
+
   string_treename (tree, tnam);        {make full treename of directory to search}
   string_vstring (snam, name, size_char(name)); {save var string name to look for}
+  string_upcase (snam);                {upper case for case-independent matching}
 
-  writeln ('Searching ', tnam.str:tnam.len);
+  if show_search then begin
+    writeln;
+    writeln ('Searching ', tnam.str:tnam.len);
+    end;
 
-  string_list_pos_last (list);         {to end of list, new entries added here}
   process_dir (tnam, 1, stat);         {process the top directory and everything below it}
+  show_search := true;                 {restore to default}
+
+  if show_search then begin
+    writeln;
+    end;
   end;
 {
 ********************************************************************************
@@ -396,9 +432,156 @@ begin
     end;
   string_treename (tnam, targ);        {make absolute link value}
 
+  writeln ('Linking ', name.str:name.len, ' --> ', targ.str:targ.len);
   file_link_create (                   {create the link}
     name, targ, [file_crea_overwrite_k], stat);
   end;
+{
+********************************************************************************
+*
+*   Function PICK_RESULT
+*
+*   Pick the appropriate entry from the search results list, CLIST.
+*
+*   If there are 0 entries in the list, then the MSG_NONE message is emitted and
+*   the function returns FALSE.
+*
+*   If there is exactly 1 entry in the CLIST is set to that entry and the
+*   function returns TRUE.
+*
+*   If there are multiple entries in the list, then the user is asked to pick
+*   one.  If this is successful, CLIST is returned set to the selected entry,
+*   and the function returns TRUE.  If the user wants to retry the whole
+*   search, the function returns FALSE.  This last case can be distinguished
+*   from the 0 search results case by looking at the number of list entries,
+*   CLIST.N.
+}
+function pick_result
+  :boolean;                            {success, CLIST set to selected entry}
+  val_param; internal;
+
+var
+  ii: sys_int_machine_t;               {entry number}
+
+begin
+  pick_result := false;                {init to not returning with result}
+
+  if clist.n = 0 then begin            {search results list is empty ?}
+    sys_message ('stuff', 'inst_nodirs');
+    writeln;
+    return;
+    end;
+
+  ii := 1;                             {init to list entry number to use}
+
+  if clist.n > 1 then begin            {multiple matches found ?}
+    sys_message ('stuff', 'inst_dirs_mult');
+    writeln;
+    while true do begin                {keep asking user until get resolution}
+      string_list_pos_abs (clist, 1);  {go to first list entry}
+      while clist.str_p <> nil do begin {once for each list entry}
+        writeln (clist.curr, ': ', clist.str_p^.str:clist.str_p^.len);
+        string_list_pos_rel (clist, 1); {advance to next list entry}
+        end;
+      writeln;
+      sys_message ('stuff', 'inst_dirs_pick'); {tell user to pick a directory}
+      string_prompt (string_v('>> '));
+      string_readin (tk);              {get the user's response into TK}
+      if tk.len <= 0 then next;        {no answer, ask again ?}
+      string_t_int (tk, ii, stat);     {try to interpret response as integer}
+      if sys_error(stat) then next;    {invalid response, ask again ?}
+      if ii = 0 then return;           {back for another search ?}
+      if (ii >= 1) and (ii <= clist.n) {got a valid answer ?}
+        then exit;
+      end;
+    end;
+
+  string_list_pos_abs (clist, ii);     {go to the selected list entry}
+  pick_result := true;                 {indicate returning with selection}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine SHOW_LIST (LIST, COMMENT)
+*
+*   This routine is for debugging only.  The contents of the strings list LIST
+*   will be shown to standard output, after the short comment COMMENT and the
+*   number of list entries.
+}
+(*
+procedure show_list (                  {show list contents, for debugging}
+  in out  list: string_list_t;         {the list to show contents of}
+  in      comment: string);            {comment to show above list of entries}
+  val_param; internal;
+
+var
+  tk: string_var80_t;                  {scratch token}
+
+begin
+  tk.max := size_char(tk.str);         {init local var string}
+
+  string_vstring (tk, comment, size_char(comment)); {make var string comment}
+
+  writeln;
+  write (tk.str:tk.len, '  ', list.n, ' entries');
+  if list.n = 0
+    then write ('.')
+    else write (':');
+  writeln;
+
+  string_list_pos_abs (list, 1);
+  while list.str_p <> nil do begin
+    writeln ('  ', list.str_p^.str:list.str_p^.len);
+    string_list_pos_rel (list, 1);
+    end;
+
+  writeln;
+  end;
+*)
+{
+********************************************************************************
+*
+*   Subroutine PATH_CLIST (STR)
+*
+*   Parse the directories path string STR into its separate components, and
+*   write them to the strings list CLIST.  CLIST will be initialized as needed.
+*   Its previous state is irrelevant.
+*
+*   STR is assumed to be separate entries separated by semicolons (;).
+}
+(*
+procedure path_clist (                 {parse path string into CLIST}
+  in      str: univ string_var_arg_t); {the path string to parse}
+  val_param; internal;
+
+var
+  p: string_index_t;                   {input string parse index}
+  tnam: string_treename_t;             {one path component parsed from input string}
+  delim: sys_int_machine_t;            {number of delimiter used to find token}
+  stat: sys_err_t;
+
+begin
+  tnam.max := size_char(tnam.str);     {init local var string}
+  clist_init;                          {make sure CLIST exist, init to empty}
+
+  p := 1;                              {init the parse index}
+  while true do begin                  {back here each new path component}
+    string_token_anyd (                {parse next component from input string}
+      str,                             {input string}
+      p,                               {parse index}
+      ';',                             {list of token delimiters}
+      1,                               {number of delimiters in the list}
+      0,                               {first N delimiters that can repeat}
+      [string_tkopt_padsp_k],          {strip leading and trailing blanks from token}
+      tnam,                            {token parsed from input string}
+      delim,                           {1-N number of delimiter actually used}
+      stat);
+    if string_eos(stat) then exit;     {hit end of input string ?}
+    sys_error_abort (stat, '', '', nil, 0);
+    string_list_str_add (clist, tnam); {add this component to the list}
+    end;                               {back to get next component}
+  end;
+*)
 {
 ********************************************************************************
 *
@@ -411,12 +594,14 @@ begin
   reboot := false;                     {init to reboot not required}
   clist_open := false;                 {list of candidate directories is not open}
   notdir_open := false;                {init to no list of disallowed directories}
+  show_search := true;                 {init to show any search progress}
 
 {*******************************************************************************
 *
 *   Set up hooks for MPLAB and the 8 bit tools.
 }
 retry_mplab8:
+  writeln;
   writeln;
   sys_message ('stuff', 'inst_mplab_ask');
   string_prompt (string_v('>> '));
@@ -427,17 +612,14 @@ retry_mplab8:
     goto done_mplab8;
     end;
 
-  clist_init;                          {init search results list}
   notdir_init;                         {create list of disallowed directories}
   string_list_str_add (notdir,
-    string_v('rollbackBackupDirectory'(0))
+    string_v('ROLLBACKBACKUPDIRECTORY'(0))
     );
-
   search_for_obj (                     {search for dir holding the tools}
     tnam,                              {top of tree to search in}
     'mpasmx',                          {name to search for}
-    clist,                             {list to add results to}
-    [objtype_dir_k],                   {search target is directory}
+    [objtype_dir_k],                   {search target is a file}
     stat);
   if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
     goto retry_mplab8;                 {back and ask the user again}
@@ -454,49 +636,14 @@ retry_mplab8:
     string_list_pos_rel (clist, 1);    {this dir checks out, advance to next}
     end;
 
-  if clist.n = 0 then begin            {no matching directories found ?}
-    sys_message ('stuff', 'inst_nodirs'); {complain about it}
-    goto retry_mplab8;                 {go back and ask again}
-    end;
-{
-*   Check for more than one suitable directory was found.  Make the user pick
-*   the right one.
-}
-  ii := 1;                             {init to list entry number to use}
+  if not pick_result then goto retry_mplab8; {didn't get a suitable directory}
 
-  if clist.n > 1 then begin            {multiple matches found ?}
-    writeln;
-    sys_message ('stuff', 'inst_dirs_mult');
-
-    while true do begin                {keep asking user until get resolution}
-      writeln;
-      string_list_pos_abs (clist, 1);  {go to first list entry}
-      while clist.str_p <> nil do begin {once for each list entry}
-        writeln (clist.curr, ': ', clist.str_p^.str:clist.str_p^.len);
-        string_list_pos_rel (clist, 1); {advance to next list entry}
-        end;
-      writeln;
-      sys_message ('stuff', 'inst_dirs_pick'); {tell user to pick a directory}
-      string_prompt (string_v('>> '));
-      string_readin (tk);              {get the user's response into TK}
-      if tk.len <= 0 then next;        {no answer, ask again ?}
-      string_t_int (tk, ii, stat);     {try to interpret response as integer}
-      if sys_error(stat) then next;    {invalid response, ask again ?}
-      if ii = 0 then goto retry_mplab8; {back for another search ?}
-      if (ii >= 1) and (ii <= clist.n) {got a valid answer ?}
-        then exit;
-      end;
-    end;
-
-  string_list_pos_abs (clist, ii);     {go to the selected list entry}
-  string_pathname_split (              {save software installation dir in SWINST}
+  string_pathname_split (              {up to top MPLAB installation dir}
     clist.str_p^, swinst, tnam);
-  string_list_kill (clist);            {delete the candidate directories list}
-  clist_open := false;
 
-  writeln;
   sys_msg_parm_vstr (msg_parm[1], swinst);
   sys_message_parms ('stuff', 'inst_mplab_found', msg_parm, 1);
+  writeln;
 {
 *   The MPLAB installation directory name is in SWINST.  Now install the hooks.
 }
@@ -523,6 +670,7 @@ done_mplab8:
 }
 retry_mplab16:
   writeln;
+  writeln;
   sys_message ('stuff', 'inst_mplab16_ask');
   string_prompt (string_v('>> '));
   string_readin (tnam);
@@ -532,16 +680,13 @@ retry_mplab16:
     goto done_mplab16;
     end;
 
-  clist_init;                          {init search results list}
   notdir_init;                         {create list of disallowed directories}
   string_list_str_add (notdir,
-    string_v('rollbackBackupDirectory'(0))
+    string_v('ROLLBACKBACKUPDIRECTORY'(0))
     );
-
   search_for_obj (                     {search for dir holding the tools}
     tnam,                              {top of tree to search in}
     'xc16-gcc.exe',                    {name to search for}
-    clist,                             {list to add results to}
     [objtype_file_k],                  {search target is a file}
     stat);
   if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
@@ -561,14 +706,6 @@ retry_mplab16:
     string_list_pos_rel (clist, 1);    {this dir checks out, advance to next}
     end;
 
-  if clist.n = 0 then begin            {no matching directories found ?}
-    sys_message ('stuff', 'inst_nodirs'); {complain about it}
-    goto retry_mplab16;                {go back and ask again}
-    end;
-{
-*   If there are multiple directories, keep only those with the most recent time
-*   stamp on the C compiler (XC16-GCC.EXE).
-}
   if clist.n > 1 then begin            {found more than one directory ?}
     string_list_pos_abs (clist, 1);    {go to first list entry}
     string_copy (clist.str_p^, tnam);  {build pathname of the C compiler}
@@ -609,44 +746,14 @@ retry_mplab16:
         ;
       end;                             {back to process this new entry}
     end;
-{
-*   Check for more than one suitable directory was found.  Make the user pick
-*   the right one.
-}
-  ii := 1;                             {init to list entry number to use}
 
-  if clist.n > 1 then begin            {multiple matches found ?}
-    writeln;
-    sys_message ('stuff', 'inst_dirs_mult');
+  if not pick_result then goto retry_mplab16; {didn't get a suitable directory ?}
 
-    while true do begin                {keep asking user until get resolution}
-      writeln;
-      string_list_pos_abs (clist, 1);  {go to first list entry}
-      while clist.str_p <> nil do begin {once for each list entry}
-        writeln (clist.curr, ': ', clist.str_p^.str:clist.str_p^.len);
-        string_list_pos_rel (clist, 1); {advance to next list entry}
-        end;
-      writeln;
-      sys_message ('stuff', 'inst_dirs_pick'); {tell user to pick a directory}
-      string_prompt (string_v('>> '));
-      string_readin (tk);              {get the user's response into TK}
-      if tk.len <= 0 then next;        {no answer, ask again ?}
-      string_t_int (tk, ii, stat);     {try to interpret response as integer}
-      if sys_error(stat) then next;    {invalid response, ask again ?}
-      if ii = 0 then goto retry_mplab16; {back for another search ?}
-      if (ii >= 1) and (ii <= clist.n) {got a valid answer ?}
-        then exit;
-      end;
-    end;
-
-  string_list_pos_abs (clist, ii);     {go to the selected list entry}
   string_copy (clist.str_p^, swinst);  {save directory the target got installed in}
-  string_list_kill (clist);            {delete the candidate directories list}
-  clist_open := false;
 
-  writeln;
   sys_msg_parm_vstr (msg_parm[1], swinst);
   sys_message_parms ('stuff', 'inst_mplab16_found', msg_parm, 1);
+  writeln;
 {
 *   The MPLAB 16 bit tool executables are in SWINST.
 }
@@ -708,6 +815,192 @@ retry_mplab16:
   sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab16:
+
+{*******************************************************************************
+*
+*   Set up hooks for Microsoft Visual Studio C compiler and related.
+}
+retry_msvc:
+  writeln;
+  writeln;
+  sys_message ('stuff', 'inst_msvc_ask');
+  string_prompt (string_v('>> '));
+  string_readin (tnam);
+  string_unpad (tnam);                 {remove trailing spaces}
+  if tnam.len = 0 then begin           {entered blank ?}
+    sys_message ('stuff', 'inst_msvc_fail');
+    goto done_msvc;
+    end;
+
+  notdir_none;                         {no list of disallowed directories}
+  search_for_obj (                     {search for dir holding the tools}
+    tnam,                              {top of tree to search in}
+    'cl.exe',                          {name to search for}
+    [objtype_file_k],                  {search target is a file, not directory}
+    stat);
+  if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
+    goto retry_msvc;                   {back and ask the user again}
+    end;
+{
+*   This list of candidate directories matching the search name is in CLIST.
+*   Now apply additional criteria to possibly narrow the list.
+}
+  string_list_pos_abs (clist, 1);      {go to first list entry}
+  while clist.str_p <> nil do begin    {scan all the list entries}
+    if not required_file ('lib.exe') then next;
+    if not required_file ('link.exe') then next;
+    {
+    *   The executable tools seem to be stored in different flavors of what
+    *   machines they run on, and what machines they produce code for.  We want
+    *   the Win32 executables that produce Win32 executables.
+    *
+    *   In old versions of VC the Win32-->Win32 executables were stored in a
+    *   directory just called "bin", with the other flavors in subdirectories
+    *   with names indicating the flavor, like "amd64_arm", "x86_amd64", etc.
+    *
+    *   Newer versions of VC seem to use separate directories for the host
+    *   architecture, then subdirectories in those for the target architectures.
+    *   Examples are "Hostx64/x64", "Hostx86/x64", etc.
+    *
+    *   Therefore, we accept any directory path ending in "bin", or those ending
+    *   in two directories with names that both end in "x86".
+    }
+    string_pathname_split (clist.str_p^, tnam, lnam); {split off lowest dir}
+    string_upcase (lnam);
+    if string_equal (lnam, string_v('BIN'(0))) {matches old style ?}
+      then goto msvc_dir_ok1;
+
+    string_substr (lnam, lnam.len-2, lnam.len, tk); {get last 3 chars of dir}
+    if not string_equal (tk, string_v('X86'(0))) {not the right target machine ?}
+      then goto msvc_dir_del;
+
+    string_pathname_split (tnam, tnam2, lnam); {get next higher dir name}
+    string_substr (lnam, lnam.len-2, lnam.len, tk); {get last 3 chars of dir}
+    string_upcase (tk);
+    if not string_equal (tk, string_v('X86'(0))) {not the right host machine ?}
+      then goto msvc_dir_del;
+msvc_dir_ok1:                          {passed host and target machine tests}
+
+msvc_dir_keep:                         {this dir checks out}
+    string_list_pos_rel (clist, 1);    {advance to next list entry}
+    next;                              {back to process this new list entry}
+
+msvc_dir_del:                          {delete this directory from the list}
+    ii := clist.curr;                  {save number of entry being deleted}
+    string_list_line_del (clist, true); {delete this results list entry}
+    if ii > clist.curr then exit;      {just deleted last list entry ?}
+    end;                               {back to process next list entry}
+
+  if not pick_result then goto retry_msvc; {didn't get a suitable directory ?}
+
+  string_copy (clist.str_p^, swinst);  {save software installation dir in SWINST}
+  sys_msg_parm_vstr (msg_parm[1], swinst);
+  sys_message_parms ('stuff', 'inst_msvc_found_exe', msg_parm, 1);
+  writeln;
+{
+*   The MSVC installation directory name is in SWINST.  Now install the hooks.
+}
+  ensure_dir ('(cog)extern/msvc', stat); {make sure this EXTERN subdir exists}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('msvc/cl.exe', 'cl.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('msvc/lib.exe', 'lib.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('msvc/link.exe', 'link.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+****************************************
+*
+*   Go up the tree to the VC directory, then look there for the VCVARSALL.BAT
+*   script.
+}
+  while true do begin                  {keep going up until get to the VC directory}
+    string_pathname_split (swinst, tnam, lnam); {split off the lowest directory}
+    string_upcase (lnam);
+    if string_equal (lnam, string_v('VC'(0))) {the SWINST dir is the VC directory ?}
+      then exit;
+    string_copy (tnam, swinst);        {up one level for next iteration}
+    end;                               {back to check this new level}
+  string_copy (swinst, tnam);          {save top level VC directory}
+
+  writeln;
+  sys_msg_parm_vstr (msg_parm[1], swinst);
+  sys_message_parms ('stuff', 'inst_msvc_found', msg_parm, 1);
+
+  show_search := false;                {don't show this search to the user}
+  search_for_obj (                     {search for the VCVARSALL script}
+    swinst,                            {tree to seach in}
+    'vcvarsall.bat',                   {file to search for}
+    [objtype_file_k],                  {target is a file, not directory}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  if clist.n = 0 then begin            {file not found ?}
+    sys_message ('stuff', 'inst_msvc_n_vcvars');
+    goto done_msvc;
+    end;
+
+  string_list_pos_abs (clist, 1);      {go to the first results list entry}
+  string_copy (clist.str_p^, swinst);
+
+  extern_link ('msvc/vcvarsall.bat', 'vcvarsall.bat', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+****************************************
+*
+*   Go up one more level, then look for the debugger, DEVENV.EXE.  The top level
+*   VC directory is in TNAM.
+}
+  string_pathname_split (tnam, tnam2, lnam); {go up one directory level}
+
+  show_search := false;                {do this search silently}
+  search_for_obj (                     {search for debugger executable}
+    tnam2,                             {top of tree to search in}
+    'devenv.exe',                      {name to search for}
+    [objtype_file_k],                  {search target is a file, not directory}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  if clist.n < 1 then begin
+    sys_message ('stuff', 'inst_msvc_debug0');
+    goto done_msvcdbg;
+    end;
+  if clist.n > 1 then begin
+    sys_message ('stuff', 'inst_msvc_debugn');
+    goto done_msvcdbg;
+    end;
+
+  string_list_pos_abs (clist, 1);      {make the single list entry current}
+  string_copy (clist.str_p^, swinst);  {save software installation dir in SWINST}
+
+  extern_link ('msvc/debugger.exe', 'devenv.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+done_msvcdbg:
+{
+****************************************
+*
+*   Run the MSVC_INIT script that is private to this program.  The script does
+*   some more setup.  It also calls the MSVC VCVARSALL script, and does some
+*   setup that requires the resulting variable settings.
+}
+  string_vstring (buf, 'cmd.exe /c'(0), -1); {init command line to run}
+  string_vstring (                     {Embed pathname of script to run}
+    tnam, '(cog)progs/embed_extool/msvc/msvc_init.bat'(0), -1);
+  string_treename (tnam, tnam2);       {make absolute pathname}
+  string_append_token (buf, tnam2);    {add path as single token to command line}
+
+  sys_run_wait_stdsame (               {run the command, user our std I/O}
+    buf,                               {the command to run}
+    tf,                                {True/False returned by program}
+    exstat,                            {exit status code of the program}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+done_msvc:
 
 {*******************************************************************************
 *
