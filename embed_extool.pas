@@ -16,6 +16,20 @@ type
     objtype_dir_k);                    {search target can be a directory}
   objtype_t = set of objtype_k_t;
 
+  evar_p_t = ^evar_t;
+  evar_t = record                      {data for one environment variable}
+    next_p: evar_p_t;                  {points to next variable in the list}
+    name_p: string_var_p_t;            {points to variable name string}
+    val_p: string_var_p_t;             {points to variable value string}
+    end;
+
+  varset_t = record                    {values for a set of environment variables}
+    mem_p: util_mem_context_p_t;       {points to private mem context for this list}
+    n: sys_int_machine_t;              {number of variables in the list}
+    first_p: evar_p_t;                 {points to first list entry}
+    last_p: evar_p_t;                  {points to last list entry}
+    end;
+
 var
   reboot: boolean;                     {state was changed that requires reboot}
   clist: string_list_t;                {list of candidate directory treenames}
@@ -38,7 +52,11 @@ var
   time: sys_clock_t;                   {scratch time value}
   tf: boolean;                         {True/False returned by subordinate program}
   exstat: sys_sys_exstat_t;            {subordinate program's exit status code}
-
+  vars_bef: varset_t;                  {variables state "before"}
+  vars_aft: varset_t;                  {variables state "after"}
+  evar_p: evar_p_t;                    {pointer to current variable definition}
+  ev_p: evar_p_t;                      {scratch pointer to a variable definition}
+  conn: file_conn_t;                   {scratch connection to a file}
   msg_parm:                            {parameter references for messages}
     array[1..max_msg_parms] of sys_parm_msg_t;
   stat: sys_err_t;
@@ -46,7 +64,7 @@ var
 label
   retry_mplab8, done_mplab8, retry_mplab16, done_mplab16,
   retry_msvc, msvc_dir_ok1, msvc_dir_keep, msvc_dir_del,
-  done_msvcdbg, done_msvc;
+  done_msvcdbg, msvc_next_var, done_msvc;
 {
 ********************************************************************************
 *
@@ -585,6 +603,179 @@ begin
 {
 ********************************************************************************
 *
+*   Subroutine VARSET_DEL (VARS)
+*
+*   Delete the set of environment variable definitions, VARS.  This deallocates
+*   any system resources used by VARS.  This routine must only be called if
+*   VARS has been created.
+}
+procedure varset_del (                 {delete environment variables definitions}
+  in out  vars: varset_t);             {definitions to deallocate resources of}
+  val_param; internal;
+
+begin
+  util_mem_context_del (vars.mem_p);   {deallocate all dynamic memory of VARS}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine VARSET_READ (FNAM, VARS, MEM, STAT)
+*
+*   Reads the environment variable settings from the file FNAM, and creates the
+*   set of variable definitions VARS from them.  MEM is the parent memory
+*   context.  A subordinate memory context will be created, and all dynamic
+*   memory for the VARS allocated under it.
+*
+*   Each line of the input file has the format:
+*
+*     <varname>=<value>
+*
+*   This is the result, for example, of capturing the standard output of the SET
+*   command in the CMD command shell to a file.
+*
+*   When the routine returns without error, VARS is always created, even if
+*   empty.  When the routine returns with error, VARS is uninitialized, meaning
+*   it has no memory context allocated to it.
+}
+procedure varset_read (                {create env varset from file}
+  in      fnam: string_treename_t;     {input file with env var definitions}
+  out     vars: varset_t;              {resulting env var set}
+  in out  mem: util_mem_context_t;     {parent memory context, will make sub}
+  out     stat: sys_err_t);            {completion status}
+
+var
+  conn: file_conn_t;                   {connection to the input file}
+  in_open: boolean;                    {the input file is open}
+  vars_crea: boolean;                  {VARS created}
+  buf: string_var8192_t;               {one line input buffer}
+  p: string_index_t;                   {input line parse index}
+  name: string_var132_t;               {variable name}
+  vval: string_var8192_t;              {variable value}
+  pick: sys_int_machine_t;             {number of delimiter picked from list}
+  evar_p: evar_p_t;                    {points to current variable definition}
+
+label
+  abort;
+
+begin
+  buf.max := size_char(buf.str);       {init local var strings}
+  name.max := size_char(name.str);
+  vval.max := size_char(vval.str);
+  in_open := false;                    {init to input file not open}
+  vars_crea := false;                  {init to VARS not created}
+
+  file_open_read_text (fnam, '', conn, stat); {open the input file}
+  if sys_error(stat) then goto abort;
+  in_open := true;                     {indicate the input file is now open}
+
+  util_mem_context_get (mem, vars.mem_p); {init VARS}
+  vars_crea := true;                   {indicate VARS has mem context}
+  vars.n := 0;                         {init VARS}
+  vars.first_p := nil;
+  vars.last_p := nil;
+
+  while true do begin                  {back here each new input file line}
+    file_read_text (conn, buf, stat);  {read next line from the input file}
+    if file_eof(stat) then exit;       {hit end of the file ?}
+    if sys_error(stat) then goto abort; {hard error ?}
+    string_unpad (buf);                {delete trailing spaces from input line}
+    if buf.len = 0 then next;          {ignore blank lines}
+    if buf.str[1] = '*' then next;     {ignore comment lines}
+    p := 1;                            {init input line parse index}
+
+    string_token_anyd (                {get the variable name token}
+      buf, p,                          {input string and parse index}
+      '=', 1,                          {delimiters}
+      0,                               {first N delimiters that can repeat}
+      [string_tkopt_padsp_k],          {strip leading and trailing spaces from token}
+      name,                            {returned token}
+      pick,                            {num of delim picked from list (unused)}
+      stat);
+    if sys_error(stat) then goto abort;
+
+    string_substr (                    {get rest of input line as variable value}
+      buf, p, buf.len, vval);
+    if vval.len = 0 then next;         {this variable doesn't really exist ?}
+
+    util_mem_grab (                    {allocate mem for descriptor of this new var}
+      sizeof(evar_p^), vars.mem_p^, false, evar_p);
+
+    string_alloc (                     {allocate and link var name string}
+      name.len, vars.mem_p^, false, evar_p^.name_p);
+    string_copy (name, evar_p^.name_p^); {save variable name}
+
+    string_alloc (                     {allocate and link var value string}
+      vval.len, vars.mem_p^, false, evar_p^.val_p);
+    string_copy (vval, evar_p^.val_p^); {save variable value}
+
+    evar_p^.next_p := nil;             {link this variable def to end of list}
+    if vars.last_p = nil
+      then begin                       {this is first list entry}
+        vars.first_p := evar_p;
+        end
+      else begin                       {adding to end of existing list}
+        vars.last_p^.next_p := evar_p;
+        end
+      ;
+    vars.last_p := evar_p;             {update pointer to last list entry}
+    vars.n := vars.n + 1;              {count one more variable in the list}
+    end;                               {back for next input file line}
+
+  file_close (conn);                   {close the input file}
+  return;                              {normal return point}
+
+abort:                                 {abort with error, STAT already set}
+  if in_open then begin                {input file is open ?}
+    file_close (conn);                 {close it}
+    end;
+  if vars_crea then begin              {VARS has been created}
+    varset_del (vars);                 {delete it}
+    end;
+  end;
+{
+********************************************************************************
+*
+*   Function VAR_FIND (VARS, NAME, EVAR_P)
+*
+*   Find the variable names NAME in the variables set VARS.  If the variable is
+*   found, then the function returns TRUE and EVAR_P points to the descriptor
+*   for that variable.  If the variable is not found, then the function returns
+*   FALSE and EVAR_P is set to NIL.
+*
+*   Variable names are compared in a case-insenstive manner.
+}
+function var_find (                    {find particular variable in var set}
+  in      vars: varset_t;              {the var set to look in}
+  in      name: univ string_var_arg_t; {name of variable to look for}
+  out     evar_p: evar_p_t)            {pointer to var if found, else NIL}
+  :boolean;                            {variable was found}
+  val_param; internal;
+
+var
+  uname: string_var132_t;              {upper case search name}
+  vu: string_var132_t;                 {upper case name of candicate var}
+
+begin
+  uname.max := size_char(uname.str);   {init local var strings}
+  vu.max := size_char(vu.str);
+  var_find := true;                    {init to variable was found}
+
+  string_copy (name, uname);           {make upper case for case-independent match}
+  string_upcase (uname);
+
+  evar_p := vars.first_p;              {init pointer to first variable in the list}
+  while evar_p <> nil do begin         {scan the variables in the list}
+    string_copy (evar_p^.name_p^, vu); {make upper case for case-independent match}
+    string_upcase (vu);
+    if string_equal (vu, uname) then return; {found the target variable ?}
+    evar_p := evar_p^.next_p;          {no, advance to next list entry}
+    end;                               {back to check this new list entry}
+
+  var_find := false;                   {indicate that the variable was not found}
+  end;
+{
+********************************************************************************
+*
 *   Start of main routine.
 }
 begin
@@ -984,8 +1175,15 @@ done_msvcdbg:
 ****************************************
 *
 *   Run the MSVC_INIT script that is private to this program.  The script does
-*   some more setup.  It also calls the MSVC VCVARSALL script, and does some
-*   setup that requires the resulting variable settings.
+*   some more setup.
+*
+*   MSVC_INIT also writes out all the environment variables before and after
+*   calling the MSVC VCVARSALL script to files VARS_BEF and VARS_AFT.  The
+*   two set of environment variable settings are compared, and the difference
+*   is written to the SET_VARS.BAT file.  SET_VARS.BAT then effectively does
+*   what VCVARSALL.BAT does, but specific to this system and this setup.  This
+*   can be significantly faster, especially with newer versions of MSVC that
+*   do a lot of looking around and checking in VCVARSALL.BAT.
 }
   string_vstring (buf, 'cmd.exe /c'(0), -1); {init command line to run}
   string_vstring (                     {Embed pathname of script to run}
@@ -993,12 +1191,105 @@ done_msvcdbg:
   string_treename (tnam, tnam2);       {make absolute pathname}
   string_append_token (buf, tnam2);    {add path as single token to command line}
 
-  sys_run_wait_stdsame (               {run the command, user our std I/O}
+  writeln;
+  writeln ('Running VCVARSALL.BAT');
+  sys_run_wait_stdsame (               {run the command, use our std I/O}
     buf,                               {the command to run}
     tf,                                {True/False returned by program}
     exstat,                            {exit status code of the program}
     stat);
   sys_error_abort (stat, '', '', nil, 0);
+
+  writeln;
+  writeln ('Creating SET_VARS.BAT');
+{
+*   Read the VARS_BEF and VARS_AFT files written by the MSVC_INIT script.
+}
+  string_vstring (tnam, '(cog)progs/embed_extool/msvc/vars_bef'(0), -1);
+  varset_read (                        {get state of variables before VCVARSALL}
+    tnam,                              {file to read from}
+    vars_bef,                          {var set to create}
+    util_top_mem_context,              {parent mem context}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  writeln ('  ', vars_bef.n, ' vars before');
+
+  string_vstring (tnam, '(cog)progs/embed_extool/msvc/vars_aft'(0), -1);
+  varset_read (                        {get state of variables after VCVARSALL}
+    tnam,                              {file to read from}
+    vars_aft,                          {var set to create}
+    util_top_mem_context,              {parent mem context}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  writeln ('  ', vars_aft.n, ' vars after');
+{
+*   Write the SET_VARS.BAT script.  This sets all the variable as left by
+*   VCVARSALL, but does so directly and efficiently.  It also sets a few
+*   variables used by the Embed build environment.
+}
+  string_vstring (tnam,                {name of file to write}
+    '(cog)extern/msvc/set_vars.bat'(0), -1);
+  file_open_write_text (               {open the file}
+    tnam, '.bat',                      {file name and suffix}
+    conn,                              {returned connection to the file}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  {
+  *   Write the variables used by the Embed build environment.  These are:
+  *
+  *     compiler  -  Pathname of the MSVC compiler executable.
+  *     librarian  -  Pathname of the MSVC librarian executable.
+  *     linker  -  Pathname of the MSVC linker executable.
+  }
+  string_vstring (buf, 'set compiler='(0), -1); {define COMPILER}
+  string_vstring (tnam, '(cog)extern/msvc/cl.exe'(0), -1);
+  string_treename (tnam, tnam2);
+  string_append (buf, tnam2);
+  file_write_text (buf, conn, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  string_vstring (buf, 'set librarian='(0), -1); {define LIBRARIAN}
+  string_vstring (tnam, '(cog)extern/msvc/lib.exe'(0), -1);
+  string_treename (tnam, tnam2);
+  string_append (buf, tnam2);
+  file_write_text (buf, conn, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  string_vstring (buf, 'set linker='(0), -1); {define LINKER}
+  string_vstring (tnam, '(cog)extern/msvc/link.exe'(0), -1);
+  string_treename (tnam, tnam2);
+  string_append (buf, tnam2);
+  file_write_text (buf, conn, stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  {
+  *   Compare the AFT list of variables to the BEF list of variables.  Write any
+  *   variable to the SET_VARS.BAT file if they were created or changed.
+  }
+  evar_p := vars_aft.first_p;          {init to first AFTER variable}
+  while evar_p <> nil do begin         {scan all the AFTER variables}
+    if var_find (vars_bef, evar_p^.name_p^, ev_p) then begin {BEFORE var exists ?}
+      if string_equal(ev_p^.val_p^, evar_p^.val_p^) {var not changed ?}
+        then goto msvc_next_var;
+      end;
+    {
+    *   The current variable was created or altered from before.  Write the new
+    *   definition to the output file.
+    }
+    string_vstring (buf, 'set '(0), -1); {init this output line}
+    string_append (buf, evar_p^.name_p^); {variable name}
+    string_append1 (buf, '=');
+    string_append (buf, evar_p^.val_p^); {variable value}
+    file_write_text (buf, conn, stat);
+    sys_error_abort (stat, '', '', nil, 0);
+
+msvc_next_var:                         {advance to next variable in AFTER list}
+    evar_p := evar_p^.next_p;
+    end;                               {back to check this new variable}
+
+  file_close (conn);                   {done writing the SET_VARS.BAT file}
+
+  varset_del (vars_bef);               {delete the variables states}
+  varset_del (vars_aft);
 
 done_msvc:
 
