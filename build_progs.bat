@@ -46,6 +46,7 @@ call src_prog %srcdir% rename_raw %1
 call src_prog %srcdir% rename_sym %1
 call src_prog %srcdir% run_cmline %1
 call src_prog %srcdir% runon %1
+call src_prog %srcdir% seqn3 %1
 call src_prog %srcdir% slink %1
 call src_prog %srcdir% sum %1
 call src_prog %srcdir% test_args %1

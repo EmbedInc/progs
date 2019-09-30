@@ -1,0 +1,8 @@
+                              Program SEQN3
+                            30 September 2019
+
+seqn3 <filename>
+
+Return the value in the sequence file FNAM, then increment the value by
+one.  The returned number is always at least 3 digits wide, padded with
+leading zeros as necessary.
