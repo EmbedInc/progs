@@ -54,6 +54,7 @@ call src_prog %srcdir% test_sio %1
 call src_prog %srcdir% test_usb %1
 call src_prog %srcdir% text_htm %1
 call src_prog %srcdir% touch %1
+call src_prog %srcdir% treename %1
 call src_prog %srcdir% waitenter %1
 call src_prog %srcdir% wav_copy %1
 call src_prog %srcdir% wav_csv %1
