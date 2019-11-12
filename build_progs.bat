@@ -39,6 +39,7 @@ call src_prog %srcdir% menu_entry %1
 call src_prog %srcdir% mort %1
 call src_prog %srcdir% mxlookup %1
 call src_prog %srcdir% pic_activity %1
+call src_prog %srcdir% plotfilt %1
 call src_prog %srcdir% primefact %1
 call src_prog %srcdir% quad %1
 call src_prog %srcdir% rdbin %1

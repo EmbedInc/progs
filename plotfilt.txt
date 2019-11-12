@@ -1,0 +1,78 @@
+                           Program PLOTFILT
+                           12 November 2019
+
+plotfilt [options]
+
+Show the response of a N pole digital filter.  The following
+computation is performed for each pole each iteration:
+
+  FILT <-- FILT + FF(NEW - FILT)
+
+where NEW is the new value to update the filter with, FF is the filter
+fraction, and FILT is the filter to update.  When multiple poles are
+specified, FILT of one pole becomes NEW for the next pole.  FILT of
+the last pole is the overall output value for that iteration.
+
+By default, the program writes a CSV file with the filter response,
+then runs CSVPLOT to show the filter response graphically.
+
+The command line options are:
+
+  -P sec
+
+    Set the filter update period.  SEC is the period in seconds.
+
+    The default is for the X axis to be the number of filter
+    iterations.  When this command line parameter is used, the X axis
+    is shown as time instead.
+
+  -F hz
+
+    Set the filter update rate.  HZ is the update frequency in Hz.
+
+    The default is for the X axis to be the number of filter
+    iterations.  When this command line parameter is used, the X axis
+    is shown as time instead.
+
+  -CSV filename
+
+    Explicitly set the name of the CSV file to create.  The default is
+    a file in the TEMP directory.
+
+  -NP
+
+    Do not plot the CSV file contents.  The CSV file is written, then the
+    program exits.  CSVPLOT is not run.
+
+  -N n
+
+    Run the filter for N iterations.  The default is to run until the
+    unit step response reaches a particular value.
+
+  -TO end
+
+    Run the filter until the unit step response reaches END or more.
+    The default for END is 0.999.
+
+  -SEED seed
+
+    Use the specific seed for generating the random values to be
+    filtered.  SEED is a 32 bit integer.
+
+    The default is to use a seed derived from the system clock.  This
+    makes the random data different each run of this program.  Use
+    -SEED to force the same data between runs for some reason.
+
+  <bits>
+
+    Adds one more pole to the filter, and sets the FF value for the
+    new pole.  BITS is the number of bits to shift right to accomplish
+    the multiply by FF.  Specifically:
+
+            -BITS
+      FF = 2
+
+    For example, when BITS is 4, then FF = 1 / 16.
+
+    There can be any number of BITS command line options.  BITS is not
+    restricted to being integer.
