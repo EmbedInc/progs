@@ -39,10 +39,15 @@ The command line options are:
     Explicitly set the name of the CSV file to create.  The default is
     a file in the TEMP directory.
 
+    The full pathname of the CSV file is written to standard output by
+    default.  This is suppressed by the -RAW command line option.
+
   -NP
 
     Do not plot the CSV file contents.  The CSV file is written, then the
     program exits.  CSVPLOT is not run.
+
+    -NP is implied by -RAW.
 
   -N n
 
@@ -74,6 +79,32 @@ The command line options are:
     iteration.  These discrete values are interpolated linearly to find
     the equivalent time or iteration when the step response reached the
     indicated value.
+
+    Output is only written for those RESPONSE values actually encountered.
+    If the run is ended before RESPONSE is reached (see -N and -TO command
+    line options), then nothing is written for that step response
+    threshold.
+
+    -ST command line options can be given in any order.  However, outputs
+    for multiple -ST responses are written in order of ascending RESPONSE
+    values, one per line.
+
+    When the -RAW option is used, only the interpolated interation or time
+    value is written to standard output, one per line, for each -ST
+    option.  The RESPONSE values are not written.
+
+  -RAW
+
+    Forces output to be in raw mode.  This means that specifically
+    requested output values are written to standard output without any
+    annotation around them.  This mode can be useful, for example, when
+    this program is run from a script to automatically capture specific
+    output values.
+
+    The default is to annotate the output intended for reading by a human
+    user.  The descriptions for command line options that cause output
+    indicate how that output is changed as a result of the -RAW command
+    line option.
 
   <bits>
 

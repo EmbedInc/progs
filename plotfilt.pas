@@ -26,7 +26,7 @@ type
   stepth_t = record                    {info about one step response threshold}
     th: real;                          {the threshold 0.0 to 1.0}
     iter: sys_int_machine_t;           {first iteration at or past the threshold}
-    iterf: real;                       {interpolated iteration for the exact threshold}
+    iterf: double;                     {interpolated iteration for the exact threshold}
     next_p: stepth_p_t;                {pointer to next threshold in the list}
     found: boolean;                    {this threshold was found}
     end;
@@ -44,6 +44,7 @@ var
     %include '(cog)lib/string_treename.ins.pas';
   mem_p: util_mem_context_p_t;         {points to our top level memory context}
   plot: boolean;                       {plot CSV file result}
+  user: boolean;                       {verbose user output mode}
 
   csv: csv_out_t;                      {CSV file writing state}
   pole_p: pole_p_t;                    {scratch pointer to a filter pole}
@@ -145,15 +146,32 @@ begin
   while th_p <> nil do begin           {scan the list}
     if not th_p^.found then return;    {all further thresholds not found ?}
     string_f_fp_free (tk, th_p^.th, 3);
-    write ('Step response of ', tk.str:tk.len, ' at ');
+    if user then begin
+      write ('Step response of ', tk.str:tk.len, ' at ');
+      end;
     if tstep = 0
       then begin                       {X axis is iteration}
-        string_f_fp_fixed (tk, th_p^.iterf, 2);
-        writeln (tk.str:tk.len, ' iterations');
+        if user
+          then begin
+            string_f_fp_fixed (tk, th_p^.iterf, 2);
+            writeln (tk.str:tk.len, ' iterations');
+            end
+          else begin
+            string_f_fp_fixed (tk, th_p^.iterf, 4);
+            writeln (tk.str:tk.len);
+            end
+          ;
         end
       else begin                       {X axis is seconds}
         string_f_fp_free (tk, th_p^.iterf * tstep, 5);
-        writeln (tk.str:tk.len, ' seconds');
+        if user
+          then begin
+            writeln (tk.str:tk.len, ' seconds');
+            end
+          else begin
+            writeln (tk.str:tk.len);
+            end
+          ;
         end
       ;
     th_p := th_p^.next_p;              {advance to next list entry}
@@ -225,7 +243,9 @@ var
 begin
   csv_out_open (name, csv, stat);      {open CSV file, init writing state}
   if sys_error(stat) then return;
-  writeln ('Writing ', csv.conn.tnam.str:csv.conn.tnam.len);
+  if user then begin
+    writeln ('Writing ', csv.conn.tnam.str:csv.conn.tnam.len);
+    end;
 {
 *   Write CSV file header.
 }
@@ -363,6 +383,7 @@ begin
   string_vstring (name, '/temp/plotfilt'(0), -1); {init output file name}
   util_mem_context_get (util_top_mem_context, mem_p); {create our to mem context}
   plot := true;                        {init to plot result}
+  user := true;                        {init to verbose user output mode}
 
   string_cmline_init;                  {init for reading the command line}
 {
@@ -408,7 +429,7 @@ next_opt:
   sys_error_none (stat);               {init to no error this command line option}
   string_upcase (opt);                 {make upper case for matching list}
   string_tkpick80 (opt,                {pick command line option name from list}
-    '-P -F -CSV -NP -N -TO -SEED -ST',
+    '-P -F -CSV -NP -N -TO -SEED -ST -RAW',
     pick);                             {number of keyword picked from list}
   case pick of                         {do routine for specific option}
 {
@@ -469,6 +490,13 @@ next_opt:
   string_cmline_token_fp2 (r, stat);   {get the step response threshold into R}
   if sys_error(stat) then goto parm_bad;
   stepth_add (r);                      {add this threshold to the list}
+  end;
+{
+*   -RAW
+}
+9: begin
+  user := false;                       {disable vebose user output mode}
+  plot := false;                       {disable showing plot of result}
   end;
 {
 *   Unrecognized command line option.
