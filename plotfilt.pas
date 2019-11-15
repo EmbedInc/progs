@@ -22,10 +22,20 @@ type
     next_p: pole_p_t;                  {points to next pole in filter, NIL for last}
     end;
 
+  stepth_p_t = ^stepth_t;
+  stepth_t = record                    {info about one step response threshold}
+    th: real;                          {the threshold 0.0 to 1.0}
+    iter: sys_int_machine_t;           {first iteration at or past the threshold}
+    iterf: real;                       {interpolated iteration for the exact threshold}
+    next_p: stepth_p_t;                {pointer to next threshold in the list}
+    found: boolean;                    {this threshold was found}
+    end;
+
 var
   filt_p: pole_p_t;                    {points to the chain of filter poles}
   last_p: pole_p_t;                    {points to last pole in chain}
   npoles: sys_int_machine_t;           {number of poles in the filter}
+  stepth_list_p: stepth_p_t;           {points to list of step response thresholds}
   enditer: sys_int_machine_t;          {end iteration, 0 for use step convergence}
   endstep: double;                     {end when step gets to this value, 0.0 for none}
   tstep: double;                       {seconds per filter iteration, 0 = use iter for X axis}
@@ -36,7 +46,7 @@ var
   plot: boolean;                       {plot CSV file result}
 
   csv: csv_out_t;                      {CSV file writing state}
-  pole_p: pole_p_t;                    {scratch pointer to a filte pole}
+  pole_p: pole_p_t;                    {scratch pointer to a filter pole}
   r: double;                           {scratch floating point}
   ii: sys_int_machine_t;               {scratch integer}
 
@@ -51,6 +61,104 @@ var
 
 label
   next_opt, err_parm, parm_bad, done_opts;
+{
+********************************************************************************
+*
+*   Subroutine STEPTH_ADD (TH)
+*
+*   Add the threshold TH to the list of step response thresholds.  The list of
+*   response thresholds is kept sorted in low to high order.  The new list entry
+*   is added before the first entry that is greater than or equal to the new
+*   entry.
+}
+procedure stepth_add (                 {add entry to step response thresholds list}
+  in      th: real);                   {threshold to add}
+  val_param; internal;
+
+var
+  sth_p: stepth_p_t;                   {pointer to new threshold descriptor}
+  curr_p: stepth_p_t;                  {pointer to current list entry}
+  prev_p: stepth_p_t;                  {pointer to previous list entry}
+
+begin
+  util_mem_grab (                      {allocate memory for the new descriptor}
+    sizeof(sth_p^),                    {amount of memory to allocate}
+    mem_p^,                            {parent memory context}
+    false,                             {won't need to individually deallocate}
+    sth_p);                            {returned pointer to the new memory}
+
+  sth_p^.th := max(0.0, min(1.0, th)); {save the threshold value}
+  sth_p^.iter := 0;                    {init to benign values}
+  sth_p^.iterf := 0.0;
+  sth_p^.found := false;               {init to this threshold not found yet}
+
+  if stepth_list_p = nil then begin    {there is no previous list ?}
+    sth_p^.next_p := nil;              {indicate no list entry after this one}
+    stepth_list_p := sth_p;            {this is now first list entry}
+    return;
+    end;
+
+  prev_p := nil;                       {init to no previous list entry}
+  curr_p := stepth_list_p;             {init to first list entry}
+  while curr_p <> nil do begin         {scan the list entries}
+    if sth_p^.th <= curr_p^.th then begin {insert before this entry ?}
+      sth_p^.next_p := curr_p;         {new entry points on to current entry}
+      if prev_p = nil
+        then begin                     {insert at start of list}
+          stepth_list_p := sth_p;      {update start of list pointer}
+          end
+        else begin                     {insert after previous entry}
+          prev_p^.next_p := sth_p;     {previous entry points on to new entry}
+          end
+        ;
+      return;                          {done updating list}
+      end;
+    prev_p := curr_p;                  {advance to the next list entry}
+    curr_p := curr_p^.next_p;
+    end;                               {back to process this new current entry}
+{
+*   The new entry has a value larger than any previous list entry.  Add it the
+*   new entry to the end of the list.  PREV_P is pointing to the last list
+*   entry.
+}
+  sth_p^.next_p := nil;                {new entry has no entry following it}
+  prev_p^.next_p := sth_p;             {point last entry to the new entry}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine SHOW_THRESH
+*
+*   Show the time or iteration of any step response thresholds that were found.
+}
+procedure show_thresh;
+  val_param; internal;
+
+var
+  th_p: stepth_p_t;                    {pointer to current thresholds list entry}
+  tk: string_var32_t;                  {scratch token}
+
+begin
+  tk.max := size_char(tk.str);         {init local var string}
+
+  th_p := stepth_list_p;               {init to first thresholds list entry}
+  while th_p <> nil do begin           {scan the list}
+    if not th_p^.found then return;    {all further thresholds not found ?}
+    string_f_fp_free (tk, th_p^.th, 3);
+    write ('Step response of ', tk.str:tk.len, ' at ');
+    if tstep = 0
+      then begin                       {X axis is iteration}
+        string_f_fp_fixed (tk, th_p^.iterf, 2);
+        writeln (tk.str:tk.len, ' iterations');
+        end
+      else begin                       {X axis is seconds}
+        string_f_fp_free (tk, th_p^.iterf * tstep, 5);
+        writeln (tk.str:tk.len, ' seconds');
+        end
+      ;
+    th_p := th_p^.next_p;              {advance to next list entry}
+    end;                               {back to do this next list entry}
+  end;
 {
 ********************************************************************************
 *
@@ -110,6 +218,9 @@ var
   step_in: double;                     {input value for step filter}
   impl_in: double;                     {input value for impulse filter}
   rand_in: double;                     {input value for random noise filter}
+  th_p: stepth_p_t;                    {points to next step threshold looking for}
+  prev: double;                        {step response at previous iteration}
+  r: double;                           {scratch floating point}
 
 begin
   csv_out_open (name, csv, stat);      {open CSV file, init writing state}
@@ -141,6 +252,8 @@ begin
   write_iteration (iter, stat);        {write initial conditions}
   if sys_error(stat) then return;
 
+  th_p := stepth_list_p;               {init next step threshold looking for}
+  prev := 0.0;                         {init value of previous iteration}
   while true do begin                  {back here each new iteration}
     iter := iter + 1;                  {make number of this iteration}
 
@@ -171,12 +284,25 @@ begin
     write_iteration (iter, stat);      {write result of this iteration to CSV file}
     if sys_error(stat) then return;
 
+    while                              {keep looking for another threshold crossed}
+        (th_p <> nil) and then         {looking for a threshold ?}
+        (last_p^.step >= th_p^.th)     {this threshold has been crossed ?}
+        do begin
+      th_p^.iter := iter;              {save first iteration at or after threshold}
+      r :=                             {fraction into range from last iteration}
+        (th_p^.th - prev) / (last_p^.step - prev);
+      th_p^.iterf := r + iter - 1.0;   {make interpolated iteration of threshold cross}
+      th_p^.found := true;             {indicate this threshold was found}
+      th_p := th_p^.next_p;            {done with this threshold, on to next}
+      end;                             {back to check this new threshold}
+
     if endstep <> 0 then begin         {check for end due to step response convergence}
       if last_p^.step >= endstep then exit;
       end;
     if enditer <> 0 then begin         {check for end due to iteration limit}
       if iter >= enditer then exit;
       end;
+    prev := last_p^.step;              {curr result becomes previous for next iteration}
     end;                               {back to do next iteration}
 
   csv_out_close (csv, stat);
@@ -229,6 +355,7 @@ begin
   filt_p := nil;                       {init to no filter poles defined}
   last_p := nil;
   npoles := 0;
+  stepth_list_p := nil;                {init to no step response thresholds}
   enditer := 0;                        {no specific number of iterations limit}
   endstep := thresh_def;               {init step response that ends run}
   tstep := 0.0;                        {no specific iteration period known}
@@ -281,7 +408,7 @@ next_opt:
   sys_error_none (stat);               {init to no error this command line option}
   string_upcase (opt);                 {make upper case for matching list}
   string_tkpick80 (opt,                {pick command line option name from list}
-    '-P -F -CSV -NP -N -TO -SEED',
+    '-P -F -CSV -NP -N -TO -SEED -ST',
     pick);                             {number of keyword picked from list}
   case pick of                         {do routine for specific option}
 {
@@ -336,6 +463,14 @@ next_opt:
   math_rand_init_int (ii, rand);
   end;
 {
+*   -ST response
+}
+8: begin
+  string_cmline_token_fp2 (r, stat);   {get the step response threshold into R}
+  if sys_error(stat) then goto parm_bad;
+  stepth_add (r);                      {add this threshold to the list}
+  end;
+{
 *   Unrecognized command line option.
 }
 otherwise
@@ -364,6 +499,8 @@ done_opts:                             {done with all the command line options}
 
   write_csv_file (name, stat);         {run filters, write to the CSV file}
   sys_error_abort (stat, '', '', nil, 0);
+
+  show_thresh;                         {show any step response thresholds found}
 
   if plot then begin                   {show results graphically}
     plot_csv_file (csv.conn.tnam, stat);
