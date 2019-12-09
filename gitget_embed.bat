@@ -77,6 +77,10 @@ call :gitget picprg pprghost
 call :gitget picprg pprog
 call :gitget picprg pptst
 call :gitget progs
+call :gitget ray
+call :gitget rend core
+call :gitget rend test
+call :gitget rend win
 call :gitget string
 call :gitget stuff
 call :gitget syn
@@ -137,6 +141,16 @@ if not "%9"=="" (
   set repo=%~9
   )
 
+rem   Determine the remote repository name in RREPO.  This is sometimes
+rem   different from the local repository name.
+rem
+set rrepo=%repo%
+if "%path1%"=="rend" (
+  if "%repo%"=="core" set rrepo=RendCore
+  if "%repo%"=="test" set rrepo=rend_test
+  if "%repo%"=="win" set rrepo=RendWin
+  )
+
 rem   Make sure the directory in SRC exists.
 rem
 call godir (cog)src
@@ -184,5 +198,5 @@ if exist "%repo%" (
   attrib "%repo%\*" -h -r /s
   delt "%repo%"
   )
-git clone "https://github.com/EmbedInc/%repo%"
+git clone "https://github.com/EmbedInc/%rrepo%" "%repo%"
 goto :eof
