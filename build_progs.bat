@@ -7,7 +7,10 @@ rem
 setlocal
 call build_pasinit
 
-rem   ESCR scripts
+rem   BAT scripts. rem call src_bat
+
+
+rem   ESCR scripts.
 rem
 call src_escr gitcheck
 
