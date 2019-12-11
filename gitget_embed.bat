@@ -63,6 +63,7 @@ call :gitget dspic
 call :gitget email
 call :gitget escr
 call :gitget file
+call :gitget gui
 call :gitget imglib
 call :gitget ioext ioext
 call :gitget ioext usbcan
