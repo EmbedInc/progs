@@ -156,7 +156,7 @@ if "%path1%"=="rend" (
 rem   Make sure the directory in SRC exists.
 rem
 call godir (cog)src
-if not exist "%path1%" mkdir "%path1%"
+if not exist "%~1" mkdir "%~1"
 
 rem   Make sure the directory tree in SOURCE exists.
 rem
