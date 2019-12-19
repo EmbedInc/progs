@@ -59,6 +59,7 @@ rem   Get all the Embed public respositories.
 rem
 call :gitget buildscr
 call :gitget can
+call :gitget chess
 call :gitget dspic
 call :gitget email
 call :gitget escr
