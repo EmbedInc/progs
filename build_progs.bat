@@ -7,13 +7,6 @@ rem
 setlocal
 call build_pasinit
 
-rem   BAT scripts. rem call src_bat
-
-
-rem   ESCR scripts.
-rem
-call src_escr gitcheck
-
 rem   Programs with Pascal source modules.
 rem
 call src_prog %srcdir% afont_font %1
