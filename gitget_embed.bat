@@ -65,7 +65,7 @@ call :gitget email
 call :gitget escr
 call :gitget file
 call :gitget gui
-call :gitget imglib
+call :gitget img
 call :gitget ioext ioext
 call :gitget ioext usbcan
 call :gitget math
