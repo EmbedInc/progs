@@ -66,6 +66,7 @@ call :gitget escr
 call :gitget file
 call :gitget gui
 call :gitget img
+call :gitget imgdisp
 call :gitget imgedit
 call :gitget imgprogs
 call :gitget ioext ioext
