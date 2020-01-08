@@ -1,0 +1,72 @@
+//  General ESCR script utility routines.
+//
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Command Showsym name [description]
+//
+//   Show the value of the ESCR symbol NAME.  NAME is a bare token, not a
+//   string.  If present, DESCRIPTION must be a string.
+//
+command Showsym
+  var local name string = [qstr [arg 1]]
+  var local desc string = ""
+  var local symtype string
+  var local s string
+
+  if [exist 2 arg] then
+    set desc [str ", " [vnl [arg 2]]]
+    endif
+
+  set symtype [sym name nl]
+  if [= symtype "SUBR"] then
+    show name " is a subroutine"
+    return
+    endif
+  if [= symtype "MACRO"] then
+    show name " is a macro"
+    return
+    endif
+  if [= symtype "FUNC"] then
+    show name " is a function"
+    return
+    endif
+  if [= symtype "CMD"] then
+    show name " is a command"
+    return
+    endif
+  if [= symtype "LABEL"] then
+    show name " is a label"
+    return
+    endif
+
+  if [or [= symtype "VAR"] [= symtype "CONST"]] then
+    set s ""
+    if [= symtype "VAR"] then
+      set s "Variable"
+      endif
+    if [= symtype "CONST"] then
+      set s "Constant"
+      endif
+    append s " " name
+    if [= [sym name nl dtype] "BOOL"] then
+      append s " (bool)"
+      endif
+    if [= [sym name nl dtype] "INTEGER"] then
+      append s " (integer)"
+      endif
+    if [= [sym name nl dtype] "REAL"] then
+      append s " (real)"
+      endif
+    if [= [sym name nl dtype] "STRING"] then
+      append s " (string)"
+      endif
+    if [= [sym name nl dtype] "TIME"] then
+      append s " (time)"
+      endif
+    show s " = " [qstr [vnl [chars name]]] desc
+    return
+    endif
+
+  show "Symbol """ name """ is not recognized."
+  endcmd

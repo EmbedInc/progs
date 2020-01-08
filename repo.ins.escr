@@ -1,0 +1,77 @@
+//   Utility routines for dealing with source code repositories.
+//
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine REPO_NAMES repo
+//
+//   Resolve various names and pathnames for the source code repository REPO.
+//   REPO must be a directory within the Embed SOURCE tree.  REPO may use Embed
+//   naming conventions, like "(cog)source/stuff".
+//
+//   The following variables are set or created:
+//
+//     REPO_TNAM  -  Full treename of the source code repository.
+//
+//     REPO_NAME  -  Leafname of the repository.
+//
+//     REPO_BUILDNAME  -  Additional path of the repository within the REPO_NAME
+//       directory in SOURCE.  For example, if REPO is "(cog)source/stuff/junk",
+//       then REPO_BUILDNAME will be "junk".  REPO_BUILDNAME is the empty string
+//       when the repository is directly within SOURCE at the top level.
+//
+//     REPO_SRCPATH  -  Pathname of the repository within the Embed SOURCE
+//       directory.
+//
+//     REPO_SRC  -  Name of the directory within the Embed SRC tree where builds
+//       are to be run.
+//
+//     REPO_VALID  -  Bool variable TRUE when REPO indicates a valid repository,
+//       and FALSE when it does not.  A valid repository must be a directory
+//       within the Embed SOURCE tree.  The values of the variables above are
+//       undefined unless REPO_VALID is TRUE.
+//
+subroutine repo_names
+  var exist repo_tnam string
+  var exist repo_name string
+  var exist repo_buildname string
+  var exist repo_srcpath string
+  var exist repo_src string
+  var exist repo_valid bool
+
+  var local fnam string      //scratch pathname
+  var local dir string       //scratch directory name
+  var local prev string      //previous pathname component
+
+  set repo_valid false       //init to repo is invalid
+  set repo_tnam [tnam [qstr [arg 1]]] //make full treename of this directory
+  set repo_name [lnam repo_tnam] //make repo leafname
+
+  set repo_buildname ""      //init path between SOURCE and repo
+  set fnam repo_tnam         //start at the repo directory
+  set prev repo_name
+  loop                       //keep going up until get to SOURCE directory
+    set dir [dir fnam]       //make parent directory name
+    if [= dir fnam] then     //hit system root ?
+      return
+      endif
+    if [= dir [tnam "(cog)source"]] then //got to top level SOURCE dir ?
+      set repo_src [lnam fnam]
+      quit
+      endif
+    if [<> repo_buildname ""] then
+      set repo_buildname [str "/" repo_buildname]
+      endif
+    set repo_buildname [str [lnam fnam] repo_buildname]
+    set fnam dir             //move to one directory up
+    endloop
+
+  if [= repo_buildname ""]
+    then
+      set repo_srcpath repo_name
+    else
+      set repo_srcpath [str repo_src "/" repo_buildname]
+    endif
+
+  set repo_valid true
+  endsub

@@ -1,0 +1,259 @@
+//   MAKE_PIC_PROJECT pic
+//
+//   Create the files for a new PIC project.  Some common modules will be
+//   included in the project from templates.  This script must be run in a
+//   directory somewhere within the Embed SOURCE tree.  The project name will be
+//   taken from the leafname of the current working directory.  It is intended
+//   that this directory be empty when this script is run.
+//
+//   PIC is the PIC or dsPIC model name, like "16F877" or "33EP512GM604".
+//
+include "util.ins.escr"      //define some utility routines
+include "repo.ins.escr"
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine GET_TEMPLATE src dest [module]
+//
+//   Copy the SRC template file to DEST and replace the QQx strings.  The
+//   following QQx substitutions are made:
+//
+//     QQ1  -  Source library name, from variable REPO_SRCPATH.
+//
+//     QQ2  -  Project name, from variable FWNAME.
+//
+//     QQ3  -  Module name, from MODULE call argument.
+//
+//     QQ4  -  Processor name, from variable PIC.
+//
+subroutine get_template
+  var local src string       //source file name
+  var local dest string      //destination file name
+  var local mod string       //module name
+  var local s string
+
+  set src [unquote [qstr [arg 1]]]
+  set dest [unquote [qstr [arg 2]]]
+  set mod [unquote [qstr [arg 3]]]
+
+  set s "copya"
+  append s " " [qtk src]
+  append s " " dest
+  append s " -repl qq1 " repo_srcpath
+  append s " -repl qq2 " fwname
+  if [<> mod ""] then
+    append s " -repl qq3 " mod
+    endif
+  append s " -repl qq4 " pic
+  run s
+  run "aspic_fix " dest
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine GET_DSPIC_MODULE module
+//
+//   Make a local copy of the dsPIC library module MODULE, and customize it to
+//   this firmware.
+//
+subroutine get_dspic_module
+  var local mod string       //module name
+  var local src string       //source file name
+  var local dest string      //destination file name
+
+  set mod [unquote [qstr [arg 1]]]
+  set src [str "(cog)source/dspic/qqq_" mod ".dspic"]
+  set dest [str fwname "_" mod ".dspic"]
+  call get_template [qtk src] [qtk dest] [qtk mod]
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine GET_PIC_MODULE module [destmod]
+//
+//   Make a local copy of the PIC library module MODULE, and customize it to
+//   this firmware.  DESTMOD is the destination module name, which defaults to
+//   MODULE.  In other words, DESTMOD is a way of renaming from the template
+//   module.
+//
+subroutine get_pic_module
+  var local mod string       //source module name
+  var local destmod string   //destination module name
+  var local src string       //source file name
+  var local dest string      //destination file name
+
+  set mod [unquote [qstr [arg 1]]]
+  if [exist 2 arg]
+    then
+      set destmod [unquote [qstr [arg 2]]]
+    else
+      set destmod mod
+    endif
+  set src [str "(cog)source/pic/qqq_" mod ".aspic"]
+  set dest [str fwname "_" destmod ".aspic"]
+  call get_template [qtk src] [qtk dest] [qtk destmod]
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine GET_DSPIC_MODULES
+//
+//   Create the template files for a dsPIC project.
+//
+subroutine get_dspic_modules
+  var local s string         //scratch string
+
+  call get_template "(cog)source/dspic/qqqlib.ins.dspic" [str fwname "lib.ins.dspic"]
+  call get_template "(cog)source/dspic/qqq.ins.dspic" [str fwname ".ins.dspic"]
+
+  call get_dspic_module ad
+  call get_dspic_module clock
+  call get_dspic_module cmd
+  call get_dspic_module cmds
+  call get_dspic_module init
+  call get_dspic_module main
+  call get_dspic_module port
+  call get_dspic_module strt
+  call get_dspic_module task
+  call get_dspic_module trap
+  call get_dspic_module uart
+
+  call get_template "(cog)source/dspic/qqq.mlist" [str fwname ".mlist"]
+
+  //   Create link to the MPLAB linker file for this dsPIC.
+  //
+  set s [str "(cog)extern/mplab/gld" picfam subclass "/p" pic ".gld"]
+  run "slink " fwname ".linkp30 " [qtk s]
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine GET_PIC_MODULES
+//
+//   Create the template files for a PIC project.
+//
+subroutine get_pic_modules
+  var local s string         //scratch string
+
+  call get_template "(cog)source/pic/qqqlib.ins.aspic" [str fwname "lib.ins.aspic"]
+  call get_template "(cog)source/pic/qqq.ins.aspic" [str fwname ".ins.aspic"]
+
+  block
+    if [= picfam "18"] then
+      call get_pic_module cmd cmd
+      quit
+      endif
+    call get_pic_module cmdpt cmd
+    endblock
+  call get_pic_module cmds
+  call get_pic_module init
+  block
+    if [= picfam "18"] then
+      call get_pic_module intr18 intr
+      quit
+      endif
+    if [= picfam "16E"] then
+      call get_pic_module intr16e intr
+      quit
+      endif
+    call get_pic_module intr
+    endblock
+  call get_pic_module main
+  call get_pic_module port
+  call get_pic_module regs
+  call get_pic_module stack
+  call get_pic_module strt
+  if [= picfam "18"] then
+    call get_pic_module task
+    endif
+  call get_pic_module uart
+
+  call get_template "(cog)source/pic/qqq.mlist" [str fwname ".mlist"]
+
+  //   Create link to our linker file for this dsPIC.
+  //
+  set s [str "(cog)source/pic/p" [lcase pic] ".linkpic"]
+  run "slink " fwname ".linkpic " [qtk s]
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Start of main routine.
+//
+var new pic string = [ucase [qstr [arg 1]]] //PIC model, upper case
+var new picl string = [lcase pic] //PIC model, lower case
+var new picfam string        //PIC family, like "16", "33", etc
+var new picclass string      //PIC class, "PIC" or "dsPIC"
+var new subclass string      //PIC subclass
+var new source_dir string    //pathname of directory within SOURCE
+var new source_name string   //leafname of final source directory (repository)
+var new src_dir string       //pathname of directory within SRC
+var new fwname string        //firmware build name
+
+var new fnam string          //scratch pathname
+var new s string             //scratch string
+
+if [<= [slen pic] 0] then
+  show "Mandatory PIC name command line argument is missing."
+  stop 3
+  endif
+
+//   Get the details about this PIC.  The following variables will be set:
+//
+//     PICFAM  -  PIC family number, like 16, 18, 33, etc.  16 means 14 bit core
+//       and 12 means 12 bit core, regardless of actual naming.  The family name
+//       of the 16F1xxx parts is "16E".
+//
+//     PICCLASS  -  Either "PIC" or "dsPIC".
+//
+//     SUBCLASS  -  Usually the first letter after the main number in the PIC
+//       name, like F in 16F877 or H in 24HJ128GP202.  This string is lower
+//       case.
+//
+set picfam [runso "get_pic_info " pic " -fam"]
+set picclass [runso "get_pic_info " pic " -class"]
+set subclass [runso "get_pic_info " pic " -sclass"]
+
+//   Get the details about the various directories and pathnames resulting from
+//   this repository.  The following variables are set:
+//
+//     REPO_TNAM  -  Full treename of the source code repository.
+//
+//     REPO_NAME  -  Leafname of the repository.
+//
+//     REPO_BUILDNAME  -  Additional path of the repository within the REPO_NAME
+//       directory in SOURCE.  For example, if REPO is "(cog)source/stuff/junk",
+//       then REPO_BUILDNAME will be "junk".  REPO_BUILDNAME is the empty string
+//       when the repository is directly within SOURCE at the top level.
+//
+//     REPO_SRCPATH  -  Pathname of the repository within the Embed SOURCE
+//       directory.
+//
+//     REPO_SRC  -  Name of the directory within the Embed SRC tree where builds
+//       are to be run.
+//
+//     REPO_VALID  -  Bool variable TRUE when REPO indicates a valid repository,
+//       and FALSE when it does not.  A valid repository must be a directory
+//       within the Embed SOURCE tree.  The values of the variables above are
+//       undefined unless REPO_VALID is TRUE.
+//
+call repo_names
+if [not repo_valid] then
+  show "Not in a valid source directory."
+  stop 3
+  endif
+
+set fwname repo_name         //set the firmware build name
+
+//   Grab and customize the template files.
+//
+if [= picclass "dsPIC"] then
+  call get_dspic_modules
+  endif
+if [= picclass "PIC"] then
+  call get_pic_modules
+  endif
+
+//   Create the build scripts.
+//
+include "make_build.escr"

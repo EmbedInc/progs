@@ -1,0 +1,451 @@
+//   MAKE_BUILD
+//
+//   Create the templates for the standard build files for a GIT repository.
+//   These are:
+//
+//     BUILD.BAT
+//
+//       Top level build file.  Builds everything from this library.
+//
+//     BUILD_LIB.BAT
+//
+//       Build the linkable library.
+//
+//     BUILD_PROGS.BAT
+//
+//       Build executable programs.
+//
+//     BUILD_FW.BAT
+//
+//       Build firmware.
+//
+//     BUILD_PASINIT.BAT
+//
+//       Initialize for building a single Pascal module.
+//
+//     BUILD_FWINIT.BAT
+//
+//       Initialize for building a single firmware module.
+//
+//     BUILD_VARS.BAT
+//
+//       Set variables for building from this library.
+//
+//   The hierarchy of build files is:
+//
+//     BUILD
+//       BUILD_FW
+//         BUILD_FWINIT
+//           BUILD_VARS
+//       BUILD_LIB
+//         BUILD_PASINIT
+//           BUILD_VARS
+//       BUILD_PROGS
+//         BUILD_PASINIT
+//           BUILD_VARS
+//
+//   Except for BUILD_VARS.BAT, only those files that do not already exist will
+//   be written.  Any other existing files will not be altered.
+//
+//   The contents of the directory will be examined for the type of source files
+//   present.  Only those BUILD_xxx files that pertain to the type of source
+//   files found will be created.  Their contents is also customized depending
+//   on the type of source files.
+//
+const debug_config bool = false //show discovered config, then exit
+
+var new srcdir string        //top level directory within SOURCE
+var new buildname string     //path within SRCDIR, empty for directly in SRCDIR
+var new libname string       //leafname of this directory
+var new source string        //Embed pathname of this directory
+var new tnam string          //scratch treename
+var new lnam string          //scratch leafname
+var new dnam string          //scratch directory pathname
+var new tk string            //scratch string
+var new found_pas bool       //Pascal source files were found
+var new found_lib bool       //Pascal source files for a library were found
+var new found_aspic bool     //ASPIC source files were found
+var new found_dspic bool     //DSPIC source files were found
+var new found_xc16 bool      //XC16 soruce files were found
+var new found_pic bool       //found any kind of PIC source file
+var new ii integer           //scratch integer
+//
+//   Find the SOURCE subirectory, and the pathname of this directory within it.
+//   The following will be set:
+//
+//     SRCDIR  -  Leafname of SOURCE and SRC subdirectory.
+//
+//     BUILDNAME  -  Pathname within SRCDIR of this directory.  Empty if
+//       directly at SRCDIR.
+//
+//     LIBNAME  -  Leafname of this directory.
+//
+//     SOURCE  -  Embed pathname of the source directory.
+//
+set tnam [tnam]              //init to in current directory
+set libname [lnam tnam]      //leafname of directory containing the source code
+loop                         //back here until get to top level SOURCE directory
+  set srcdir [lnam tnam]     //get the leafname of this directory
+  set dnam [dir tnam]        //get the pathname of the parent directory
+  set source [str srcdir [if [= source ""] "" "/"] source]
+  if [= [tnam dnam "/" srcdir] [tnam "(cog)source/" srcdir]] then
+    quit
+    endif
+  if [= buildname ""]
+    then
+      set tk ""
+    else
+      set tk "\"
+    endif
+  set buildname [str srcdir tk buildname]
+  set tnam dnam
+  endloop
+
+set source [str "(cog)source/" source]
+//
+//   Scan the files in this directory to find what kind of source code is here.
+//
+loop dir "." file
+  set ii [slen [dent]]
+  set tk [substr [- ii 3] 4 [dent]]
+  set found_pas [or found_pas [= tk ".pas"]]
+  set tk [substr [- ii 4] 5 [dent]]
+  set found_xc16 [or found_xc16 [= tk ".xc16"]]
+  set tk [substr [- ii 5] 6 [dent]]
+  set found_aspic [or found_aspic [= tk ".aspic"]]
+  set found_dspic [or found_dspic [= tk ".dspic"]]
+  set tk [substr [- ii 7] 8 [dent]]
+  set found_lib [or found_lib [= tk ".ins.pas"]]
+  endloop
+
+set found_dspic [or found_dspic found_xc16]
+set found_pic [or found_aspic found_dspic]
+
+if debug_config then
+  show "srcdir " srcdir
+  show "buildname " buildname
+  show "libname " libname
+  show "source " source
+  show "found_pas " found_pas
+  show "found_lib " found_lib
+  show "found_aspic " found_aspic
+  show "found_dspic " found_dspic
+  show "found_xc16 " found_xc16
+  show "found_pic " found_pic
+  stop
+  endif
+
+//**************************************
+//
+//   Write BUILD_VARS.BAT
+//
+set lnam "build_vars.bat"
+show "Writing " lnam
+writepush lnam
+
+write "@echo off"
+write "rem"
+write "rem   Define the variables for running builds from this source library."
+write "rem"
+write "set srcdir=" srcdir
+write "set buildname=" buildname
+write "call treename_var """ source """ sourcedir"
+if found_lib
+  then
+    write "set libname=" libname
+  else
+    write "set libname="
+  endif
+if found_pic
+  then
+    write "set fwname=" libname
+  else
+    write "set fwname="
+  endif
+if found_dspic then
+  var exist pic string = "33EP512GM604"
+  write "set pictype=" pic
+  write "set picclass=dsPIC"
+  write "set t_parms=-qv"
+  endif
+if found_aspic then
+  var exist pic string = "16F876"
+  write "set pictype=" pic
+  write "set picclass=PIC"
+  write "set t_parms="
+  endif
+
+write "call treename_var ""(cog)src/%srcdir%/debug_%fwname%.bat"" tnam"
+write "make_debug ""%tnam%"""
+write "call ""%tnam%"""
+
+writepop
+
+//**************************************
+//
+//   Write BUILD_FWINIT.BAT
+//
+set lnam "build_fwinit.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    if found_pic then
+      show "Writing " lnam
+      writepush lnam
+
+      write "@echo off"
+      write "rem"
+      write "rem   Set up the environment for building firmware from this source directory."
+      write "rem"
+      write "call build_vars"
+      if found_dspic then
+        write "set using_xc16=" [lcase found_xc16]
+        write "set heapsize=0"
+        endif
+
+      if found_aspic then
+        write ""
+        write "rem   Get assembler ""library"" include files.  These are left in the SRC/PIC"
+        write "rem   directory."
+        write "rem"
+        write "call src_get_ins_aspic pic fwtype"
+        write "call src_get_ins_aspic pic port"
+        write "call src_get_ins_aspic pic regs"
+        write "call src_get_ins_aspic pic stack"
+        write "call src_get_ins_aspic pic std"
+        write "call src_get_ins_aspic pic std_def"
+        write ""
+        write "call src_ins_aspic %srcdir% %fwname%lib -set make_version"
+        write "call src_get_ins_aspic %srcdir% %fwname%"
+        endif
+
+      if found_dspic then
+        write ""
+        write "rem   Get assembler ""library"" include files.  These are left in the SRC/DSPIC"
+        write "rem   directory."
+        write "rem"
+        write "call src_go dspic"
+        write "make_dspic_inc %pictype%"
+        write "call src_get_ins_dspic dspic cmd"
+        write "call src_get_ins_dspic dspic cmds"
+        write "call src_get_ins_dspic dspic fwtype"
+        write "call src_get_ins_dspic dspic lcase"
+        write "call src_get_ins_dspic dspic port"
+        write "call src_get_ins_dspic dspic std"
+        write "call src_get_ins_dspic dspic std_def"
+        write "call src_get_ins_dspic dspic task"
+        write "call src_get_ins_dspic dspic uart"
+        write ""
+        write "call src_ins_dspic %srcdir% %fwname%lib -set make_version"
+        write "call src_get_ins_dspic %srcdir% %fwname%"
+        endif
+
+      writepop
+      endif
+  endif
+
+//**************************************
+//
+//   Write BUILD_FW.BAT
+//
+set lnam "build_fw.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    if found_pic then
+      show "Writing " lnam
+      writepush lnam
+
+      write "@echo off"
+      write "rem"
+      write "rem   Build the firmware from this source directory."
+      write "rem"
+      write "setlocal"
+      write "call build_fwinit"
+      write ""
+
+      if found_aspic then
+        write "call src_aspic %srcdir% %fwname%_cmd"
+        write "call src_aspic %srcdir% %fwname%_cmds"
+        write "call src_aspic %srcdir% %fwname%_init"
+        write "call src_aspic %srcdir% %fwname%_intr"
+        write "call src_aspic %srcdir% %fwname%_main"
+        write "call src_aspic %srcdir% %fwname%_port"
+        write "call src_aspic %srcdir% %fwname%_regs"
+        write "call src_aspic %srcdir% %fwname%_stack"
+        write "call src_aspic %srcdir% %fwname%_uart"
+        write ""
+        write "call src_libpic %srcdir% %fwname%"
+        write ""
+        write "call src_aspic %srcdir% %fwname%_strt"
+        write "call src_expic %srcdir% %fwname%"
+        endif
+
+      if found_dspic then
+        write "call src_aspic %srcdir% %fwname%_ad"
+        write "call src_dspic %srcdir% %fwname%_clock"
+        write "call src_dspic %srcdir% %fwname%_cmd"
+        write "call src_dspic %srcdir% %fwname%_cmds"
+        if found_xc16 then
+          write "call src_aspic %srcdir% %fwname%_hfiles"
+          endif
+        write "call src_dspic %srcdir% %fwname%_init"
+        write "call src_dspic %srcdir% %fwname%_main"
+        write "call src_dspic %srcdir% %fwname%_port"
+        write "call src_dspic %srcdir% %fwname%_strt"
+        write "call src_dspic %srcdir% %fwname%_task"
+        write "call src_dspic %srcdir% %fwname%_trap"
+        write "call src_dspic %srcdir% %fwname%_uart"
+        if found_xc16 then
+          write "call src_aspic %srcdir% %fwname%_xc16"
+          endif
+        if found_xc16 then
+          write ""
+          write "call src_get %srcdir% %fwname%.h"
+          write ""
+          write "call src_xc16 %srcdir% %fwname%_qqq"
+          endif
+        write ""
+        write "call src_exp30 %srcdir% %fwname%"
+        endif
+
+      writepop
+      endif
+  endif
+
+//**************************************
+//
+//   Write BUILD_PASINIT.BAT
+//
+set lnam "build_pasinit.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    if found_pas then
+      show "Writing " lnam
+      writepush lnam
+
+      write "@echo off"
+      write "rem"
+      write "rem   Set up for building a Pascal module."
+      write "rem"
+      write "call build_vars"
+      write ""
+
+      if found_lib then
+        write "call src_get %srcdir% %libname%.ins.pas"
+        write "call src_get %srcdir% %libname%2.ins.pas"
+        write ""
+        endif
+
+      write "call src_go %srcdir%"
+      write "call src_getfrom sys base.ins.pas"
+      write "call src_getfrom sys sys.ins.pas"
+      write "call src_getfrom util util.ins.pas"
+      write "call src_getfrom string string.ins.pas"
+      write "call src_getfrom file file.ins.pas"
+      write "call src_getfrom stuff stuff.ins.pas"
+      write ""
+
+      write "make_debug debug_switches.ins.pas"
+      write "call src_builddate ""%srcdir%"""
+
+      writepop
+      endif
+  endif
+
+//**************************************
+//
+//   Write BUILD_LIB.BAT
+//
+set lnam "build_lib.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    if found_lib then
+      show "Writing " lnam
+      writepush lnam
+
+      write "@echo off"
+      write "rem"
+      write "rem   BUILD_LIB"
+      write "rem"
+      write "rem   Build the " [ucase libname] " library."
+      write "rem"
+      write "setlocal"
+      write "call build_pasinit"
+      write ""
+      write "call src_insall %srcdir% %libname%"
+      write ""
+      write "call src_pas %srcdir% %libname%_qqq"
+      write "call src_pas %srcdir% %libname%_comblock"
+      write ""
+      write "call src_lib %srcdir% %libname%"
+      write "call src_msg %srcdir% %libname%"
+
+      writepop
+      endif
+  endif
+
+//**************************************
+//
+//   Write BUILD_PROGS.BAT
+//
+set lnam "build_progs.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    if found_pas then
+      show "Writing " lnam
+      writepush lnam
+
+      write "@echo off"
+      write "rem"
+      write "rem   BUILD_PROGS"
+      write "rem"
+      write "rem   Build the executable programs from this source directory."
+      write "rem"
+      write "setlocal"
+      write "call build_pasinit"
+      write ""
+      write "call src_prog %srcdir% test_" libname
+
+      writepop
+      endif
+  endif
+
+//**************************************
+//
+//   Write BUILD.BAT
+//
+set lnam "build.bat"
+if [exist lnam fnam]
+  then
+    show "Keep    " lnam
+  else
+    show "Writing " lnam
+    writepush lnam
+
+    write "@echo off"
+    write "rem"
+    write "rem   Build everything from this source directory."
+    write "rem"
+    write "setlocal"
+    write "call godir """ source """"
+    write ""
+    if found_pic then
+      write "call build_fw"
+      endif
+    if found_lib then
+      write "call build_lib"
+      endif
+    if found_pas then
+      write "call build_progs"
+      endif
+    writepop
+  endif
