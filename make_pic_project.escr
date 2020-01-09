@@ -18,7 +18,7 @@ include "repo.ins.escr"
 //   Copy the SRC template file to DEST and replace the QQx strings.  The
 //   following QQx substitutions are made:
 //
-//     QQ1  -  Source library name, from variable REPO_SRCPATH.
+//     QQ1  -  Top level SOURCE directory name, from REPO_SOURCE.
 //
 //     QQ2  -  Project name, from variable FWNAME.
 //
@@ -39,7 +39,7 @@ subroutine get_template
   set s "copya"
   append s " " [qtk src]
   append s " " dest
-  append s " -repl qq1 " repo_srcpath
+  append s " -repl qq1 " repo_source
   append s " -repl qq2 " fwname
   if [<> mod ""] then
     append s " -repl qq3 " mod
@@ -253,6 +253,10 @@ if [= picclass "dsPIC"] then
 if [= picclass "PIC"] then
   call get_pic_modules
   endif
+
+//   Create the SEQ subdirectory.
+//
+dir exist "seq"
 
 //   Create the build scripts.
 //

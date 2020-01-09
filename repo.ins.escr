@@ -11,6 +11,8 @@
 //
 //   The following variables are set or created:
 //
+//     REPO_SOURCE  -  Top SOURCE directory that repository is in.
+//
 //     REPO_TNAM  -  Full treename of the source code repository.
 //
 //     REPO_NAME  -  Leafname of the repository.
@@ -32,6 +34,7 @@
 //       undefined unless REPO_VALID is TRUE.
 //
 subroutine repo_names
+  var exist repo_source string
   var exist repo_tnam string
   var exist repo_name string
   var exist repo_buildname string
@@ -56,7 +59,7 @@ subroutine repo_names
       return
       endif
     if [= dir [tnam "(cog)source"]] then //got to top level SOURCE dir ?
-      set repo_src [lnam fnam]
+      set repo_source [lnam fnam]
       quit
       endif
     if [<> repo_buildname ""] then
@@ -73,5 +76,6 @@ subroutine repo_names
       set repo_srcpath [str repo_src "/" repo_buildname]
     endif
 
+  set repo_src repo_source
   set repo_valid true
   endsub
