@@ -3,7 +3,10 @@
 *   Write information about the indicated PIC to standard output.
 }
 program get_pic_info;
-%include 'base.ins.pas';
+%include 'sys.ins.pas';
+%include 'util.ins.pas';
+%include 'string.ins.pas';
+%include 'file.ins.pas';
 
 const
   max_msg_args = 2;                    {max arguments we can pass to a message}
@@ -20,7 +23,9 @@ var
   pic:                                 {full upper case PIC name, like "16F876" or "30F2010"}
     %include '(cog)lib/string32.ins.pas';
   p, p2: string_index_t;               {scratch string index}
-  fam: sys_int_machine_t;              {PIC family number, like 12, 16, 18, and 30}
+  fam: sys_int_machine_t;              {initial PIC family number, like 12 16 33, etc}
+  famstr:                              {PIC family type, like "12", "16", "16E", "33", etc}
+    %include '(cog)lib/string32.ins.pas';
   ptype:                               {PIC memory type designator like "F", "C", "J"}
     %include '(cog)lib/string32.ins.pas';
   pnum:                                {full name within family, like "876A"}
@@ -30,6 +35,7 @@ var
     %include '(cog)lib/string32.ins.pas';
   subclass:                            {subclass, usually first letter of PTYPE, like C, F, or H}
     %include '(cog)lib/string32.ins.pas';
+  famenh: boolean;                     {"enhanced" version of the current family}
   lcase: boolean;                      {make output lower case}
 
   opt:                                 {upcased command line option}
@@ -121,6 +127,8 @@ invalid:                               {complain about invalid PIC name and bomb
 {
 *   Extract leading PIC family number into FAM.
 }
+  famenh := false;                     {init to this is not extended version of family}
+
   for p := 1 to pic.len do begin
     if (pic.str[p] < '0') or (pic.str[p] > '9') {this char not a digit ?}
       then goto fndfam;
@@ -129,7 +137,7 @@ invalid:                               {complain about invalid PIC name and bomb
 fndfam:                                {P is index of first non-digit char}
   if p = 1 then goto invalid;          {no leading family number ?}
   string_substr (pic, 1, p-1, opt);    {extract family number string into OPT}
-  string_t_int (opt, fam, stat);       {convert to integer family number in FAM}
+  string_t_int (opt, fam, stat);       {convert to integer prefix number}
   if sys_error(stat) then goto invalid;
 {
 *   P is the index of the first char in PIC past the leading family number.
@@ -183,6 +191,14 @@ fndfam:                                {P is index of first non-digit char}
 54, 55, 56, 57, 58, 59, 505, 506, 540: fam := 12; {really 12 bit core}
       end;
     end;
+
+  famenh :=                            {special "enhanced" PIC 16 ?}
+    (fam = 16) and (pnum.str[1] = '1');
+
+ string_f_int (famstr, fam);           {init family string}
+ if famenh then begin                  {"enhanced" version of this family ?}
+   string_append1 (famstr, 'E');
+   end;
 {
 *   Determine the PIC class.
 }
@@ -197,6 +213,7 @@ otherwise
 }
   if lcase then begin                  {make all results lower case ?}
     string_downcase (pic);
+    string_downcase (famstr);
     string_downcase (ptype);
     string_downcase (pnum);
     string_downcase (class);
@@ -209,7 +226,7 @@ otherwise
 
 show_all_k: begin
       writeln ('PIC ', pic.str:pic.len, ':');
-      writeln ('  Family   ', fam);
+      writeln ('  Family   ', famstr.str:famstr.len);
       writeln ('  Memory   ', ptype.str:ptype.len);
       writeln ('  Number   ', picnum, ', subname ', pnum.str:pnum.len);
       writeln ('  Class    ', class.str:class.len);
@@ -217,7 +234,7 @@ show_all_k: begin
       end;
 
 show_fam_k: begin
-      writeln (fam);
+      writeln (famstr.str:famstr.len);
       end;
 
 show_class_k: begin
