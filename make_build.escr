@@ -227,11 +227,15 @@ if [exist lnam fnam]
         write "rem"
         write "call src_go dspic"
         write "make_dspic_inc %pictype%"
+        write "call src_get_ins_dspic dspic ad1"
+        write "call src_get_ins_dspic dspic ad2"
+        write "call src_get_ins_dspic dspic blink"
         write "call src_get_ins_dspic dspic cmd"
         write "call src_get_ins_dspic dspic cmds"
         write "call src_get_ins_dspic dspic fwtype"
         write "call src_get_ins_dspic dspic lcase"
         write "call src_get_ins_dspic dspic port"
+        write "call src_get_ins_dspic dspic pgbyte"
         write "call src_get_ins_dspic dspic std"
         write "call src_get_ins_dspic dspic std_def"
         write "call src_get_ins_dspic dspic task"
@@ -239,6 +243,7 @@ if [exist lnam fnam]
         write ""
         write "call src_ins_dspic %srcdir% %fwname%lib -set make_version"
         write "call src_get_ins_dspic %srcdir% %fwname%"
+        write "call src_get_ins_dspic %srcdir% %fwname%_cmdrsp"
         endif
 
       writepop
@@ -284,7 +289,7 @@ if [exist lnam fnam]
         endif
 
       if found_dspic then
-        write "call src_aspic %srcdir% %fwname%_ad"
+        write "call src_dspic %srcdir% %fwname%_ad"
         write "call src_dspic %srcdir% %fwname%_clock"
         write "call src_dspic %srcdir% %fwname%_cmd"
         write "call src_dspic %srcdir% %fwname%_cmds"
@@ -292,7 +297,9 @@ if [exist lnam fnam]
           write "call src_aspic %srcdir% %fwname%_hfiles"
           endif
         write "call src_dspic %srcdir% %fwname%_init"
+        write "call src_dspic %srcdir% %fwname%_ledstat"
         write "call src_dspic %srcdir% %fwname%_main"
+        write "call src_dspic %srcdir% %fwname%_pgbyte"
         write "call src_dspic %srcdir% %fwname%_port"
         write "call src_dspic %srcdir% %fwname%_strt"
         write "call src_dspic %srcdir% %fwname%_task"

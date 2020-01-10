@@ -26,6 +26,9 @@ include "repo.ins.escr"
 //
 //     QQ4  -  Processor name, from variable PIC.
 //
+//     QQ5  -  Path of firmware directory within the SOURCE/xxx directory.  From
+//             REPO_BUILDNAME.
+//
 subroutine get_template
   var local src string       //source file name
   var local dest string      //destination file name
@@ -45,26 +48,45 @@ subroutine get_template
     append s " -repl qq3 " mod
     endif
   append s " -repl qq4 " pic
+  append s " -repl qq5 "
+  if [<> repo_buildname ""]
+    then
+      append s repo_buildname
+    else
+      append s '""'
+    endif
   run s
-  run "aspic_fix " dest
+  set s [lnam dest ".aspic" ".dspic"]
+  if [<> s dest] then        //PIC assembler source code file ?
+    run "aspic_fix " dest
+    endif
   endsub
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//   Subroutine GET_DSPIC_MODULE module
+//   Subroutine GET_DSPIC_MODULE module [destmod]
 //
 //   Make a local copy of the dsPIC library module MODULE, and customize it to
-//   this firmware.
+//   this firmware.  DESTMOD is the destination module name, which defaults to
+//   MODULE.  In other words, DESTMOD is a way of renaming from the template
+//   module.
 //
 subroutine get_dspic_module
-  var local mod string       //module name
+  var local mod string       //source module name
+  var local destmod string   //destination module name
   var local src string       //source file name
   var local dest string      //destination file name
 
   set mod [unquote [qstr [arg 1]]]
+  if [exist 2 arg]
+    then
+      set destmod [unquote [qstr [arg 2]]]
+    else
+      set destmod mod
+    endif
   set src [str "(cog)source/dspic/qqq_" mod ".dspic"]
-  set dest [str fwname "_" mod ".dspic"]
-  call get_template [qtk src] [qtk dest] [qtk mod]
+  set dest [str fwname "_" destmod ".dspic"]
+  call get_template [qtk src] [qtk dest] [qtk destmod]
   endsub
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,12 +128,16 @@ subroutine get_dspic_modules
   call get_template "(cog)source/dspic/qqqlib.ins.dspic" [str fwname "lib.ins.dspic"]
   call get_template "(cog)source/dspic/qqq.ins.dspic" [str fwname ".ins.dspic"]
 
+  call get_template "(cog)source/dspic/qqq_cmdrsp.ins.dspic" [str fwname "_cmdrsp.ins.dspic"]
+
   call get_dspic_module ad
+  call get_dspic_module blink ledstat
   call get_dspic_module clock
   call get_dspic_module cmd
   call get_dspic_module cmds
   call get_dspic_module init
   call get_dspic_module main
+  call get_dspic_module pgbyte
   call get_dspic_module port
   call get_dspic_module strt
   call get_dspic_module task
@@ -245,6 +271,11 @@ if [not repo_valid] then
 
 set fwname repo_name         //set the firmware build name
 
+set s [tnam "(cog)src/" repo_src] //make sure the subdirectory in SRC exists
+if [not [exist s fnam]] then
+  dir make s
+  endif
+
 //   Grab and customize the template files.
 //
 if [= picclass "dsPIC"] then
@@ -254,9 +285,10 @@ if [= picclass "PIC"] then
   call get_pic_modules
   endif
 
-//   Create the SEQ subdirectory.
+//   Create the SEQ and HEX subdirectories.
 //
 dir exist "seq"
+dir exist "hex"
 
 //   Create the build scripts.
 //
