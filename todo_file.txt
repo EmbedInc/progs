@@ -1,0 +1,39 @@
+                         Embed program TODO_FILE
+                             27 January 2020
+
+todo <command line options>
+
+This program reads the input file and writes "to do" entries that have
+elapsed.  A to-do entry is a single line that has the format:
+
+  :YYYY/MM/DD.HH:MM:SS <arbitrary text>
+
+Fields at the right end of the date/time string may be omitted, in which
+case they default to the earliest time of the part of the date/time
+specified to the left.  If a field is omitted, then all fields to its
+right must also be omitted.  For example, these two date/time strings are
+equivalent:
+
+  2008/9/11.7:00:00
+  2008/09/11.07
+
+Both specify 7:00 am on 11 September 2008.
+
+The program lists the entry if the current time is later than that
+specified in the entry.  The full pathname of the input file is written
+preceeding the list of entries if there is at least one entry written.  If
+the file contains no entries or none of them have elapsed, then nothing is
+written.
+
+If the input file name has the suffix ".info", then that suffix may be
+omitted on the command line.
+
+The command line options are:
+
+  -IN filename
+  filename
+
+    Specifies the file to scan for to-do entries as described above.  The
+    first form of this command line option (with the "-IN" keyword) is the
+    general case.  The second form is for convenience only when the file
+    name does not start with a dash ("-").
