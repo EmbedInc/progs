@@ -61,6 +61,7 @@ call src_prog %srcdir% waitenter
 call src_prog %srcdir% wav_copy
 call src_prog %srcdir% wav_csv
 call src_prog %srcdir% wav_info
+call src_prog %srcdir% xcopyright
 
 rem   Programs with C source modules.
 rem

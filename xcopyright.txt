@@ -1,0 +1,28 @@
+                            Program XCOPYRIGHT
+                             28 February 2020
+
+xcopyright fnam
+
+Quick hack to remove the silly copyright notice from files that have them.
+These copyright notices always seem to be on comment lines starting with
+"*", then one or more blanks, then "::" with possibly other stuff
+following.
+
+If a "*" only line preceeds the copyright block, then it is delete too.
+
+If the copyright block is its own comment block with just a "{" line
+immediately preceeding and just a "}" immediately following, then the
+whole comment block is deleted.
+
+The body of the copyright message was typically:
+
+*   :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+*   ::        CONFIDENTIAL AND PROPRIETARY INFORMATION OF        ::
+*   ::                    COGNIVISION, INC.                      ::
+*   ::           PROTECTED BY THE COPYRIGHT LAW AS AN            ::
+*   ::                    UNPUBLISHED WORK                       ::
+*   :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+FNAM is the file to edit.  Nothing is done to the file, including
+modification date/time stamp not changed, if the file is not edited.  The
+".pas" file name suffix may be omitted from FNAM.
