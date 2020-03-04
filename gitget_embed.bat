@@ -72,6 +72,7 @@ call :gitget imgprogs
 call :gitget ioext ioext
 call :gitget ioext usbcan
 call :gitget math
+call :gitget mdev
 call :gitget pbp
 call :gitget phot
 call :gitget pic
