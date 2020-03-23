@@ -65,6 +65,7 @@ call :gitget email
 call :gitget escr
 call :gitget file
 call :gitget gui
+call :gitget hier
 call :gitget img
 call :gitget imgdisp
 call :gitget imgedit
