@@ -204,6 +204,9 @@ if [exist lnam fnam]
         write "set heapsize=0"
         endif
 
+      write "mdevbuild"
+      write "call build_mdevs_init"
+
       if found_aspic then
         write ""
         write "rem   Get assembler ""library"" include files.  These are left in the SRC/PIC"
@@ -314,6 +317,8 @@ if [exist lnam fnam]
           write ""
           write "call src_xc16 %srcdir% %fwname%_qqq"
           endif
+        write ""
+        write 'call "%sourcedir%\build_mdevs"'
         write ""
         write "call src_exp30 %srcdir% %fwname%"
         endif
