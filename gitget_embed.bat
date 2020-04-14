@@ -60,6 +60,7 @@ rem
 call :gitget buildscr
 call :gitget can
 call :gitget chess
+call :gitget displ
 call :gitget dspic
 call :gitget email
 call :gitget escr
