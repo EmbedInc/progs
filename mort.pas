@@ -128,12 +128,8 @@ label
 procedure round_cents (
   in out  d: double);
 
-var
-  i: sys_int_max_t;
-
 begin
-  i := round(d * 100.0);
-  d := i / 100.0;
+  d := trunc((d * 100.0) + 0.5) / 100.0;
   end;
 {
 ********************************
