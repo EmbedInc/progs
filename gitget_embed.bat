@@ -90,6 +90,7 @@ call :gitget rend core
 call :gitget rend test
 call :gitget rend win
 call :gitget sst
+call :gitget strflex
 call :gitget string
 call :gitget stuff
 call :gitget syn
