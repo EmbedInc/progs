@@ -85,6 +85,7 @@ call :gitget picprg pprghost
 call :gitget picprg pprog
 call :gitget picprg pptst
 call :gitget progs
+call :gitget qprot u1ex
 call :gitget ray
 call :gitget rend core
 call :gitget rend test
@@ -159,6 +160,9 @@ if "%path1%"=="rend" (
   if "%repo%"=="core" set rrepo=RendCore
   if "%repo%"=="test" set rrepo=rend_test
   if "%repo%"=="win" set rrepo=RendWin
+  )
+if "%path1%"=="qprot" (
+  if "%repo%"=="u1ex" set rrepo=QprotU1ex
   )
 
 rem   Make sure the directory in SRC exists.
