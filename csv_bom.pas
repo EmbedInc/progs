@@ -9,7 +9,6 @@ program csv_bom;
 
 const
   max_msg_args = 2;                    {max arguments we can pass to a message}
-  tab = chr(9);                        {ASCII TAB character}
 
 type
   pflag_k_t = (                        {flags for individial parts}
@@ -198,11 +197,39 @@ procedure putfield (                   {append field to current output line}
   in      f: univ string_var_arg_t);   {string to append as new field}
   val_param; internal;
 
+var
+  quote: boolean;                      {the string must be quoted}
+  ii: sys_int_machine_t;
+
 begin
   if not olempty then begin            {output line is not completely empty ?}
-    string_append1 (buf, tab);         {add separator after previous field}
+    string_append1 (buf, ',');         {add separator after previous field}
     end;
-  string_append (buf, f);              {add the new field}
+
+  quote := false;                      {init to string does not need to be quoted}
+  for ii := 1 to f.len do begin        {scan the string}
+    if f.str[ii] = ',' then begin      {found comma, string must be quoted ?}
+      quote := true;
+      exit;
+      end;
+    end;                               {back to check next character}
+
+  if not quote
+    then begin                         {write the field as supplied}
+      string_append (buf, f);
+      end
+    else begin                         {writ the file quoted}
+      string_append1 (buf, '"');       {write leading quote}
+      for ii := 1 to f.len do begin    {once for each character}
+        string_append1 (buf, f.str[ii]); {write this character}
+        if f.str[ii] = '"' then begin  {was a quote character ?}
+          string_append1 (buf, '"');   {double quote means quote char within quote}
+          end;
+        end;
+      string_append1 (buf, '"');       {write trailing quote}
+      end
+    ;
+
   olempty := false;                    {this line is defintely not empty now}
   end;
 {
@@ -857,7 +884,7 @@ next_comp:                             {done with current component}
 *   Write the information in the parts list to the output file.
 }
   string_pathname_join (dir, conn.gnam, fnam); {make pathname of the output file}
-  file_open_write_text (fnam, '_bom.tsv', conn, stat); {open output file}
+  file_open_write_text (fnam, '_bom.csv', conn, stat); {open output file}
   sys_error_abort (stat, '', '', nil, 0);
 {
 *   Write the column names as the first output file line.
@@ -1240,7 +1267,7 @@ next_part:                             {done processing the current part}
   sys_message_parms ('stuff', 'bom_outfile', msg_parm, 1);
 {
 *   Initialize the Excel spreadsheet file by copying the template.  This sets up
-*   the formatting of the cells, which would not happen if the new .TSV file was
+*   the formatting of the cells, which would not happen if the new .CSV file was
 *   imported into a empty spreadsheet.
 }
   string_pathname_join (dir, conn.gnam, fnam); {init to generic output file pathname}
