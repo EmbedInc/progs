@@ -1,0 +1,104 @@
+//   PIC_MODULE_TEMPLATE
+//
+//   Return the full pathname of the template file for creating the PIC module
+//   with the generic name NAME.
+//
+//   The following shell variables must be set:
+//
+//     SRCDIR  -  Name of the top level source directory within (cog)source.
+//
+//     PICCLASS  -  "PIC" or "dsPIC".
+//
+//     NAME  -  Generic name of template to find.
+//
+const srcdir string = [evar "srcdir"]
+const picclass string = [lcase [evar "picclass"]]
+const name string = [evar "name"]
+
+var new suff string = ".aspic" //determine source code file name suffix
+if [= picclass "dspic"] then
+  set suff ".dspic"
+  endif
+
+var new templ string
+var new lnam string
+var new dir string           //scratch directory name
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine SCANTREE dir
+//
+//   Scan the whole tree in and below the directory DIR looking for the file
+//   LNAM.  If found, TEMPL is returned the full treename of the file.  TEMPL is
+//   otherwise not altered.
+//
+subroutine scantree
+  var local olddir string = [dir]
+  dir [arg 1]
+
+  loop dir "."
+    if [= [dent type] "DIR"] then //subdirectory ?
+      if [= [dent] ".git"] then
+        repeat
+        endif
+      call scantree:+1 [dent]
+      if [<> templ ""] then
+        quit
+        endif
+      repeat
+      endif
+
+    if [<> [dent] lnam] then //this file doesn't match ?
+      repeat
+      endif
+
+    set templ [dent tnam]
+    quit
+    endloop
+
+  dir olddir
+  endsub
+//
+////////////////////////////////////////////////////////////////////////////////
+
+set lnam [str "qqq_" name suff] //leafname of file to look for
+
+block
+  //
+  //   Try template in the current directory.
+  //
+  set templ [tnam lnam]
+  if [exist templ fnam] then
+    quit
+    endif
+  //
+  //   Try template in SRCDIR/NAME.
+  //
+  set templ [tnam "(cog)source/" name "/" lnam]
+  if [exist templ fnam] then
+    quit
+    endif
+  //
+  //   Look for template anywhere in SRCDIR.
+  //
+  set templ ""
+  call scantree [tnam "(cog)source/" srcdir]
+  if [<> templ ""] then
+    quit
+    endif
+  //
+  //   Try normal file template in PIC or DSPIC directory.
+  //
+  set dir "pic"              //init source dir for 8 bit PICs
+  if [= picclass "dspic"] then //is really 16 bit PIC or dsPIC ?
+    set dir "dspic"
+    endif
+  set templ [tnam "(cog)source/" dir "/" lnam]
+  if [exist templ fnam] then
+    quit
+    endif
+
+  set templ ""               //indicate no matching template found
+  endblock
+
+show templ
