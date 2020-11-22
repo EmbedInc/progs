@@ -1,5 +1,5 @@
                          Embed program TODO_FILE
-                             27 January 2020
+                            22 November 2020
 
 todo <command line options>
 
@@ -24,6 +24,8 @@ specified in the entry.  The full pathname of the input file is written
 preceeding the list of entries if there is at least one entry written.  If
 the file contains no entries or none of them have elapsed, then nothing is
 written.
+
+Any lines not matching the syntax described above are silently ignored.
 
 If the input file name has the suffix ".info", then that suffix may be
 omitted on the command line.

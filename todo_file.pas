@@ -115,11 +115,7 @@ loop_line:                             {back here each new input line}
   if sys_error(stat) then goto loop_line; {ignore if no token present or other error}
 
   string_t_time1 (parm, true, time, stat); {convert to time this task is due}
-  if sys_error_check (stat, '', '', nil, 0) then begin
-    sys_msg_parm_int (msg_parm[1], conn.lnum);
-    sys_msg_parm_vstr (msg_parm[2], conn.tnam);
-    sys_message_bomb ('string', 'err_at_line', msg_parm, 2);
-    end;
+  if sys_error(stat) then goto loop_line; {not a valid time string, ignore ?}
 
   if sys_clock_compare (now, time) = sys_compare_lt_k {not time for this task yet ?}
     then goto loop_line;
