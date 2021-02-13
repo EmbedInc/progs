@@ -1,7 +1,7 @@
 {   Program EMBED_EXTOOL
 *
-*   Set up environment variables, links, and other system state required for the
-*   Embed Inc software to work with external tools.
+*   Set up links and other system state required for the Embed Inc software to
+*   work with external tools.
 }
 program embed_extool;
 %include 'base.ins.pas';
@@ -62,8 +62,8 @@ var
   stat: sys_err_t;
 
 label
-  retry_mplab8, done_mplab8, retry_mplab16, done_mplab16,
-  retry_msvc, msvc_dir_ok1, msvc_dir_keep, msvc_dir_del,
+  retry_mplab, done_mplab, retry_mplab8, done_mplab8, retry_mplab16,
+  done_mplab16, retry_msvc, msvc_dir_ok1, msvc_dir_keep, msvc_dir_del,
   done_msvcdbg, msvc_next_var, done_msvc;
 {
 ********************************************************************************
@@ -274,7 +274,7 @@ next_ent:                              {done with this directory entry, advance 
 {
 ******************************
 *
-*   Start of executable code of SEARCH_FOR_DIR.
+*   Start of executable code of SEARCH_FOR_OBJ.
 }
 begin
   tnam.max := size_char(tnam.str);     {init local var string}
@@ -290,13 +290,12 @@ begin
     writeln;
     writeln ('Searching ', tnam.str:tnam.len);
     end;
-
   process_dir (tnam, 1, stat);         {process the top directory and everything below it}
-  show_search := true;                 {restore to default}
-
   if show_search then begin
     writeln;
     end;
+
+  show_search := true;                 {restore to default}
   end;
 {
 ********************************************************************************
@@ -422,7 +421,7 @@ abort:                                 {PATH exists, STAT all set}
 *
 *   Create a symbolic link somewhere in the Embed EXTERN directory tree.
 *   EXTNAME is the name of the link within (cog)extern.  SWINTARG is the target
-*   of the link within the directory named in SWINST.
+*   of the link within the directory named in the global variable SWINST.
 }
 procedure extern_link (                {create link in Embed EXTERN tree}
   in      extname: string;             {name of link within (cog)extern}
@@ -526,7 +525,6 @@ begin
 *   will be shown to standard output, after the short comment COMMENT and the
 *   number of list entries.
 }
-(*
 procedure show_list (                  {show list contents, for debugging}
   in out  list: string_list_t;         {the list to show contents of}
   in      comment: string);            {comment to show above list of entries}
@@ -555,7 +553,6 @@ begin
 
   writeln;
   end;
-*)
 {
 ********************************************************************************
 *
@@ -789,9 +786,9 @@ begin
 
 {*******************************************************************************
 *
-*   Set up hooks for MPLAB and the 8 bit tools.
+*   Set up hooks for MPLAB and the MPASM tools.
 }
-retry_mplab8:
+retry_mplab:
   writeln;
   writeln;
   sys_message ('stuff', 'inst_mplab_ask');
@@ -800,7 +797,7 @@ retry_mplab8:
   string_unpad (tnam);                 {remove trailing spaces}
   if tnam.len = 0 then begin           {entered blank ?}
     sys_message ('stuff', 'inst_mplab_fail');
-    goto done_mplab8;
+    goto done_mplab;
     end;
 
   notdir_init;                         {create list of disallowed directories}
@@ -809,11 +806,11 @@ retry_mplab8:
     );
   search_for_obj (                     {search for dir holding the tools}
     tnam,                              {top of tree to search in}
-    'mpasmx',                          {name to search for}
-    [objtype_dir_k],                   {search target is a file}
+    'mplab_platform',                  {name to search for}
+    [objtype_dir_k],                   {search target is a directory}
     stat);
   if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
-    goto retry_mplab8;                 {back and ask the user again}
+    goto retry_mplab;                  {back and ask the user again}
     end;
 {
 *   This list of candidate directories matching the search name is in CLIST.
@@ -821,13 +818,11 @@ retry_mplab8:
 }
   string_list_pos_abs (clist, 1);      {go to first list entry}
   while clist.str_p <> nil do begin    {scan all the list entries}
-    if not required_file ('mpasmx.exe') then next;
-    if not required_file ('mplib.exe') then next;
-    if not required_file ('mplink.exe') then next;
+    if not required_file ('bin/mplab_ide64.exe') then next;
     string_list_pos_rel (clist, 1);    {this dir checks out, advance to next}
     end;
 
-  if not pick_result then goto retry_mplab8; {didn't get a suitable directory}
+  if not pick_result then goto retry_mplab; {didn't get a suitable directory}
 
   string_pathname_split (              {up to top MPLAB installation dir}
     clist.str_p^, swinst, tnam);
@@ -841,7 +836,7 @@ retry_mplab8:
   ensure_dir ('(cog)extern/mplab', stat); {make sure this EXTERN subdir exists}
   sys_error_abort (stat, '', '', nil, 0);
 
-  extern_link ('mplab/ide.exe', 'mplab_platform/bin/mplab_ide.exe', stat);
+  extern_link ('mplab/ide.exe', 'mplab_platform/bin/mplab_ide64.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
   extern_link ('mplab/mpasm.exe', 'mpasmx/mpasmx.exe', stat);
@@ -851,6 +846,69 @@ retry_mplab8:
   sys_error_abort (stat, '', '', nil, 0);
 
   extern_link ('mplab/mplink.exe', 'mpasmx/mplink.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+done_mplab:
+
+{*******************************************************************************
+*
+*   Set up hooks for MPLAB and the MPASM tools.
+}
+retry_mplab8:
+  writeln;
+  writeln;
+  sys_message ('stuff', 'inst_mplab8_ask');
+  string_prompt (string_v('>> '));
+  string_readin (tnam);
+  string_unpad (tnam);                 {remove trailing spaces}
+  if tnam.len = 0 then begin           {entered blank ?}
+    sys_message ('stuff', 'inst_mplab8_fail');
+    goto done_mplab8;
+    end;
+
+  notdir_init;                         {create list of disallowed directories}
+  string_list_str_add (notdir,
+    string_v('ROLLBACKBACKUPDIRECTORY'(0))
+    );
+  search_for_obj (                     {search for dir holding the tools}
+    tnam,                              {top of tree to search in}
+    'xc8',                             {name to search for}
+    [objtype_dir_k],                   {search target is a directory}
+    stat);
+  if sys_error_check (stat, '', '', nil, 0) then begin {couldn't open dir ?}
+    goto retry_mplab8;                 {back and ask the user again}
+    end;
+{
+*   This list of candidate directories matching the search name is in CLIST.
+*   Now apply additional criteria to possibly narrow the list.
+}
+  string_list_pos_abs (clist, 1);      {go to first list entry}
+  while clist.str_p <> nil do begin    {scan all the list entries}
+    if not required_file ('pic/bin/hlink.exe') then next;
+    if not required_file ('pic/bin/libr.exe') then next;
+    if not required_file ('pic-as/bin/pic-as.exe') then next;
+    string_list_pos_rel (clist, 1);    {this dir checks out, advance to next}
+    end;
+
+  if not pick_result then goto retry_mplab8; {didn't get a suitable directory}
+
+  string_copy (clist.str_p^, swinst);  {set target directory}
+  sys_msg_parm_vstr (msg_parm[1], swinst);
+  sys_message_parms ('stuff', 'inst_mplab8_found', msg_parm, 1);
+  writeln;
+{
+*   The MPLAB installation directory name is in SWINST.  Now install the hooks.
+}
+  ensure_dir ('(cog)extern/mplab', stat); {make sure this EXTERN subdir exists}
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/picasm.exe', 'pic-as/bin/pic-as.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/libr.exe', 'pic/bin/libr.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link ('mplab/hlink.exe', 'pic/bin/hlink.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab8:

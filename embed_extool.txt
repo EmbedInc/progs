@@ -1,6 +1,5 @@
                            Program EMBED_EXTOOL
-                               26 July 2019
-
+                             13 February 2021
 
 embed_extool
 
@@ -10,10 +9,16 @@ of specific files wherever they might be installed.
 
 Currently hooks for the following tools are installed.
 
-  Microchip MPLAB
+  Microchip MPLAB, in EXTERN/MPLAB
 
     These hooks are required for building and debugging PIC and dsPIC
     firmware.
+
+  Microsoft Visual Studio, in EXTERN/MSVC
+
+    Links are created for running the IDE, C compiler, librarian, and
+    linker.  Some additional state specific to the particular installation
+    of MSVC is also cached.
 
   /TEMP directory
 
