@@ -4,7 +4,10 @@
 //   directory.  This can be useful to quickly see which respositories have
 //   uncommitted changes.
 //
+const tempfile string = [tnam [evar "temp"] "/gitcheck.txt"]
+
 var new nrepo integer
+var new nchanged integer
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -15,8 +18,12 @@ var new nrepo integer
 subroutine repo
   set nrepo [+ nrepo 1]
   dir [arg 1]
-  show [dir]
-  run "git status -s"
+  run "cmd /c git status -s >" tempfile
+  if [> [file len tempfile] 0] then
+    set nchanged [+ nchanged 1]
+    show [dir]
+    run "copya -in """ tempfile """ -list"
+    endif
   endsub
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,4 +51,7 @@ subroutine dotree
 show
 call dotree "."
 show
-show nrepo " repositories found."
+show nrepo " repositories checked, " nchanged " with changes found."
+if [> nchanged 0] then
+  del tree tempfile
+  endif
