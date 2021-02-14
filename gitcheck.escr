@@ -52,6 +52,6 @@ show
 call dotree "."
 show
 show nrepo " repositories checked, " nchanged " with changes found."
-if [> nchanged 0] then
+if [> nrepo 0] then
   del tree tempfile
   endif
