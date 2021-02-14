@@ -525,6 +525,7 @@ begin
 *   will be shown to standard output, after the short comment COMMENT and the
 *   number of list entries.
 }
+(*
 procedure show_list (                  {show list contents, for debugging}
   in out  list: string_list_t;         {the list to show contents of}
   in      comment: string);            {comment to show above list of entries}
@@ -553,6 +554,7 @@ begin
 
   writeln;
   end;
+*)
 {
 ********************************************************************************
 *
@@ -852,7 +854,7 @@ done_mplab:
 
 {*******************************************************************************
 *
-*   Set up hooks for MPLAB and the MPASM tools.
+*   Set up hooks for the 8 bit tools bundled with XC8.
 }
 retry_mplab8:
   writeln;
@@ -902,13 +904,25 @@ retry_mplab8:
   ensure_dir ('(cog)extern/mplab', stat); {make sure this EXTERN subdir exists}
   sys_error_abort (stat, '', '', nil, 0);
 
-  extern_link ('mplab/picasm.exe', 'pic-as/bin/pic-as.exe', stat);
+  extern_link ('mplab/asm8.exe', 'pic-as/bin/pic-as.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
-  extern_link ('mplab/libr.exe', 'pic/bin/libr.exe', stat);
+  extern_link ('mplab/lib8.exe', 'pic/bin/libr.exe', stat);
   sys_error_abort (stat, '', '', nil, 0);
 
-  extern_link ('mplab/hlink.exe', 'pic/bin/hlink.exe', stat);
+  extern_link ('mplab/link8.exe', 'pic/bin/hlink.exe', stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link (
+    'mplab/mpasm_asm8.pdf',
+    'docs/MPASM_to_MPLAB_XC8_PIC_Assembler_Migration_Guide.pdf',
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+
+  extern_link (
+    'mplab/asm8.pdf',
+    'docs/MPLAB_XC8_PIC_Assembler_User_Guide.pdf',
+    stat);
   sys_error_abort (stat, '', '', nil, 0);
 
 done_mplab8:
