@@ -40,6 +40,7 @@ var
   i, j: sys_int_machine_t;             {scratch integers and loop counters}
   tab_prev, tab_new: sys_int_machine_t; {previous and new tab stop column numbers}
   blankmode: blankmode_k_t;            {blank line processing mode}
+  lnum: sys_int_machine_t;             {1-N number of the current line}
   in_fnam_set: boolean;                {TRUE if input file name explicitly set}
   out_fnam_set: boolean;               {TRUE if output file name explicitly set}
   dotab: boolean;                      {TRUE if translating tabs into spaces}
@@ -50,6 +51,7 @@ var
   append: boolean;                     {append source to end of output file}
   outbin: boolean;                     {using binary output file hack}
   wblank: boolean;                     {last line written was a blank}
+  wlnum: boolean;                      {write line number in front of each line}
   tabto:                               {table of from-to tab columns}
     array[1..tabto_max]                {column number tab found at}
     of sys_int_machine_t;              {column number to skip to for next char}
@@ -57,7 +59,6 @@ var
   buf:                                 {one line text buffer}
     %include '(cog)lib/string8192.ins.pas';
   in_p, out_p: string_var8192_p_t;     {point to current IN and OUT buffers, IBUF or BUF}
-  u_p: univ_ptr;                       {scratch universal pointer}
   opts:                                {command line options names, space separated}
     %include '(cog)lib/string256.ins.pas';
 
@@ -192,6 +193,31 @@ begin
 {
 ********************************************************************************
 *
+*   Subroutine BUFS_FLIP
+*
+*   Flip the input and output buffers.  IN_P points to the input buffer and
+*   OUT_P to the output.  This routine should be called after any processing
+*   that applies a transformation to the current line string by copying and
+*   modifying it from the input buffer to the output buffer.  When not in the
+*   process of such a transformation, IN_P must point to the source string, and
+*   OUT_P to a scratch buffer.
+*
+*   This routine simply flips IN_P and OUT_P to point to the other buffer.
+}
+procedure bufs_flip;                   {flip input and output buffers}
+  val_param; internal;
+
+var
+  p: univ_ptr;
+
+begin
+  p := in_p;
+  in_p := out_p;
+  out_p := p;
+  end;
+{
+********************************************************************************
+*
 *   Start of main routine.
 }
 begin
@@ -213,6 +239,7 @@ begin
   outbin := false;                     {init to not using binary output hack}
   patt_p := nil;                       {init to no string substitution patterns}
   pattl_p := nil;
+  wlnum := false;                      {init to not write line numbers}
   blankmode := blankmode_copy_k;       {init to copy all blank lines to the output}
 {
 *   Process the command line options.  Come back here each new command line
@@ -234,6 +261,7 @@ begin
   string_appends (opts, ' -NOBLANK'(0)); {14}
   string_appends (opts, ' -1BLANK'(0)); {15}
   string_appends (opts, ' -REPLNC'(0)); {16}
+  string_appends (opts, ' -LNUM'(0));  {17}
 
 next_opt:
   string_cmline_token (opt, stat);     {get next command line option name}
@@ -466,6 +494,12 @@ done_tabs_set:                         {all done setting tab stops}
   pattl_p := patt_p;                   {update pointer to last chain entry}
   end;
 {
+*   -LNUM
+}
+17: begin
+  wlnum := true;
+  end;
+{
 *   Unrecognized command line option.
 }
 otherwise
@@ -525,6 +559,8 @@ done_opts:                             {done with all the command line options}
 {
 *   Position the input file to the starting line number.
 }
+  lnum := 1;                           {init current line number}
+
   if (lnum_from > 1) and filein then begin {skip over some input file lines ?}
     file_skip_text (conn_in, lnum_from-1, stat); {skip up to first line to copy}
     sys_error_abort (stat, 'file', 'skip_input_text', nil, 0);
@@ -544,6 +580,7 @@ loop:                                  {back here each new input file text line}
     file_read_text (conn_in, ibuf, stat); {read next line from input file}
     if file_eof(stat) then goto done_copy; {reached end of input file ?}
     sys_error_abort (stat, 'file', 'read_input_text', nil, 0);
+    lnum := conn_in.lnum;              {1-N number of this line}
     end;
   string_unpad (ibuf);                 {truncate trailing input line blanks}
   in_p := addr(ibuf);                  {init pointer to current input and output buffers}
@@ -565,8 +602,7 @@ loop:                                  {back here each new input file text line}
         ;
       end;                             {back to process next input line character}
     string_unpad (buf);                {make sure there are no trailing spaces}
-    in_p := addr(buf);                 {current processed line is in BUF}
-    out_p := addr(ibuf);               {IBUF is scratch for next processed version}
+    bufs_flip;                         {flip input and output buffers}
     end;
 {
 *   The current processed input line is IN_P^, and OUT_P^ is available as a scratch
@@ -578,13 +614,11 @@ loop:                                  {back here each new input file text line}
   patt_p := pattf_p;                   {init to first substitution pattern in the list}
   while patt_p <> nil do begin         {once for each pattern}
     dopatt (in_p^, out_p^, patt_p^);   {perform the substitution}
-    u_p := out_p;                      {flip input and output line buffers}
-    out_p := in_p;
-    in_p := u_p;
+    bufs_flip;                         {flip the input and output buffers}
     patt_p := patt_p^.next_p;          {advance to next substitution in the chain}
     end;                               {back to do next substitution pattern}
 {
-*   The final processed line is in IN_P^.
+*   Apply special handling to blank lines.
 }
   if in_p^.len = 0
     then begin                         {this is a blank line}
@@ -602,7 +636,37 @@ blankmode_del_k: begin                 {don't write any blank lines}
       wblank := false;
       end;
     ;
-
+{
+*   Add the line number to the start of the line if this is enabled.
+}
+  if wlnum then begin                  {write line numbers ?}
+    if lnum < 100000
+      then begin                       {needs 5 digits or less}
+        string_f_int_max_base (        {make line number string}
+          out_p^,                      {output string}
+          lnum,                        {input integer}
+          10,                          {number base (radix)}
+          5,                           {field width}
+          [string_fi_unsig_k],         {consider the input integer unsigned}
+          stat);
+        end
+      else begin                       {would overflow our normal 5 char field}
+        string_f_int_max_base (        {make line number string}
+          out_p^,                      {output string}
+          lnum,                        {input integer}
+          10,                          {number base (radix)}
+          0,                           {field width, use whatever it takes}
+          [string_fi_unsig_k],         {consider the input integer unsigned}
+          stat);
+        end
+      ;
+    string_appendn (out_p^, ': ', 2);  {add delimiter after line number}
+    string_append (out_p^, in_p^);     {add the contents of the line}
+    bufs_flip;                         {flip the input and output buffers}
+    end;
+{
+*   The final processed line is in IN_P^.
+}
   if fileout then begin                {writing to output file enabled ?}
     if outbin
       then begin                       {we are using binary output hack}

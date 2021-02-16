@@ -1,5 +1,5 @@
                               Program COPYA
-                             20 February 2014
+                            16 February 2021
 
 copya [options]
 
@@ -76,6 +76,10 @@ Command line options are:
 
     This has the same effect as -SHOW and -NWRITE, and is supplied for
     convenience.  The default is -NSHOW and -WRITE.
+
+  -LNUM
+
+    Write the input line number in front of each output line.
 
   -FROM n
 
