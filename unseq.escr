@@ -9,15 +9,15 @@ block
   var local ver integer
   var local seq integer
 
-  set snam [str "seq/" fw ".seq"]	//make version number seq file name
+  set snam [str "seq/" fw ".seq"] //make version number seq file name
   if [not [exist snam fnam]] then
     show [ucase fw] " sequence file not found."
     stop
     endif
-  set ver [seq snam 0]	//get current version number
+  set ver [seq snam 0]       //get current version number
 
-  set snam [str "seq/" fw ver]	//make sequence number seq file name
-  set seq [seq snam 0]	//get current sequence number
+  set snam [str "seq/" fw ver] //make sequence number seq file name
+  set seq [seq snam 0]       //get current sequence number
   if [> seq 1] then
     set seq [seq snam aft -1]
     endif
