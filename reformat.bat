@@ -29,6 +29,11 @@ rem       Tabs converted to single spaces.  Labels aligned in column 1,
 rem       opcodes in column 10, operands in column 18, and end of line
 rem       comments in column 30.
 rem
+rem     .escr, .es  -  Embed scripts
+rem
+rem       Tabs converted to single spaces.  End of line comments aligned in
+rem       column 30.
+rem
 setlocal
 set patt=%~1
 if "%patt%"=="" set patt=*
@@ -65,6 +70,15 @@ for %%a in (%patt%) do (
     if not "%%~b"=="%%~a" (
       echo %%~a
       aspic_fix "%%~a"
+      )
+    )
+
+  for /f "delims=" %%b in ('leafname "%%~a" .escr .es') do (
+    if not "%%~b"=="%%~a" (
+      echo %%~a
+      copya -in "%%~a" -out temp.reformat.escr -tabs 3 5 7 9 11 30
+      align_comments temp.reformat.escr -out "%%~a"
+      del temp.reformat.escr
       )
     )
   )

@@ -257,7 +257,7 @@ begin
 
   file_open_read_text (                {open input file, determine suffix}
     fnam,
-    '.pas .cog .ftn .c .h .sml .asm .ain .aspic .c18 .c30 ""',
+    '.pas .cog .ftn .c .h .sml .asm .ain .aspic .c18 .c30 .escr .es ""',
     conn_in, stat);
   sys_error_abort (stat, '', '', nil, 0);
 {
@@ -394,6 +394,14 @@ done_opts:                             {all done reading command line options}
         ncomm := 1;
         end;
 
+12, 13: begin                          {.ESCR, .ES}
+        do_range_spec (excl[1], string_v('"''" "''" -line'(0)));
+        do_range_spec (excl[2], string_v('''"'' ''"'' -line'(0)));
+        nexcl := 2;
+        do_range_spec (comm[1], string_v('// "" -eol'(0)));
+        ncomm := 1;
+        end;
+
 otherwise                              {generic defaults}
       do_range_spec (excl[1], string_v('"''" "''" -line'(0)));
       do_range_spec (excl[2], string_v('''"'' ''"'' -line'(0)));
@@ -408,7 +416,7 @@ otherwise                              {generic defaults}
 }
   if not comtab_set then begin         {user didn't explicitly set tab column ?}
     case conn_in.ext_num of            {what suffix did the input file have ?}
-7, 8, 9: begin                         {.ASM, .AIN, .ASPIC}
+7, 8, 9, 12, 13: begin                 {.ASM, .AIN, .ASPIC, .ESCR, .ES}
         comtab := 30;
         end;
       end;                             {end of input file suffix cases}
