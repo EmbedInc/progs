@@ -15,5 +15,6 @@ call src_getfrom file file.ins.pas
 call src_getfrom file cogserve.ins.pas
 call src_getfrom math math.ins.pas
 call src_getfrom stuff stuff.ins.pas
+call src_getfrom hier hier.ins.pas
 
 call src_builddate "%srcdir%"

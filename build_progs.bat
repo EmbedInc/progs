@@ -7,6 +7,10 @@ rem
 setlocal
 call build_pasinit
 
+rem   Install the environment files that are private to this directory.
+rem
+call src_env %srcdir% progs.msg
+
 rem   Programs with Pascal source modules.
 rem
 call src_prog %srcdir% afont_font
@@ -37,6 +41,7 @@ call src_prog %srcdir% macadr
 call src_prog %srcdir% make_debug
 call src_prog %srcdir% menu_entry
 call src_prog %srcdir% mort
+call src_prog %srcdir% mpmem
 call src_prog %srcdir% mxlookup
 call src_prog %srcdir% pic_activity
 call src_prog %srcdir% plotfilt

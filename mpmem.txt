@@ -1,0 +1,20 @@
+                              Program MPMEM
+                             27 February 2021
+
+mpmem [options]
+
+Read a Microchip MPLINK map file, and show the data memory usage.  Unlike
+the MPLINK map file, the length of sections are shown in decimal, and gaps
+of unused memory are also shown.
+
+The command line options are:
+
+  -MAP <input file name>
+  <input file name>
+
+    Specifies the MPLINK map file to read.  The ".map" mandatory file name
+    suffix may be omitted from the file name.
+
+    The second version of this command line option (without the -MAP
+    keyword) is for convenience, and requires that the file name not start
+    with a dash ("-").
