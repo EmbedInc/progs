@@ -563,7 +563,7 @@ done_opts:                             {done with all the command line options}
         adrlast := reg_p^.next_p^.adr - 1; {gap ending address}
         end
       ;
-    if adrlast > adrfirst then begin   {there actually is a gap ?}
+    if adrlast >= adrfirst then begin  {there actually is a gap ?}
       len := adrlast - adrfirst + 1;   {size of this gap}
       hexadr (adrfirst, parm);
       write ('                           ', parm.str:parm.len);
