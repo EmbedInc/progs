@@ -1,0 +1,44 @@
+//   PULLALL
+//
+//   Do a GIT PULL on all repositories at or below the current directory.
+//
+var new nrepo integer = 0    //number of repositories found
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine REPO dir
+//
+//   Handle the GIT repository DIR.  DIR is the full pathname of the repository.
+//
+subroutine repo
+  set nrepo [+ nrepo 1]
+  dir [arg 1]
+  show
+  run "git pull origin master"
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine DOTREE dir
+//
+//   Find and handle GIT repositories in the tree DIR.  DIR is a string.
+//
+subroutine dotree
+  loop dir [arg 1] dir
+    if [= [dent] ".git"]
+      then
+        call repo [dent dir] //process this repository
+        quit
+      else
+        call dotree:+1 [dent tnam] //process this subdirectory
+      endif
+    endloop
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Start of main routine.
+//
+call dotree "."
+show
+show nrepo " repositories found."
