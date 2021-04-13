@@ -88,8 +88,10 @@ rem
 rem   Build the ZIP package.
 rem
 if exist %brd%_fab.zip del %brd%_fab.zip
-"c:\program files\WinZip\wzzip" -ex %brd%_fab.zip readme_fab.txt %brd%.plc %brd%.stc %brd%.cmp %brd%.ly* %brd%.sol %brd%.sts %brd%.drl %brd%.drd %brd%.dri %brd%.gpi %brd%.pls* %brd%.out*
+call extpath_var winzip/wzzip.exe tnam
+"%tnam%" -ex %brd%_fab.zip readme_fab.txt %brd%.plc %brd%.stc %brd%.cmp %brd%.ly* %brd%.sol %brd%.sts %brd%.drl %brd%.drd %brd%.dri %brd%.gpi %brd%.pls* %brd%.out*
 
-"c:\program files\WinZip\wzunzip" -vbf %brd%_fab.zip
+call extpath_var winzip/wzunzip.exe tnam
+"%tnam%" -vbf %brd%_fab.zip
 copya -list -s ""
 copya -list readme_fab.txt
