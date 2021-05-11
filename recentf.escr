@@ -31,6 +31,6 @@ subroutine dotree
 //
 //   Start of main routine.
 //
-set timeth [- [now] [* 24 3600]]	//make threshold time for showing file
+set timeth [- [now] [* 24 3600]] //make threshold time for showing file
 
 call dotree "."
