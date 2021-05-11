@@ -1,0 +1,36 @@
+//   RECENTF
+//
+//   List files modified in the last 24 hours in the current tree.
+//
+var new timeth time          //threshold time for showing the file
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine DOTREE tree
+//
+//   Scan all top level files in the directory TREE, looking for those modified
+//   today.  Subdirectories are handle recursively.
+//
+subroutine dotree
+  loop dir [arg 1] file dir
+    pick one by [dent type]
+
+      option "FILE"
+        if [>= [dent dtm] timeth] then //recently modified ?
+          show [dent tnam]
+          endif
+
+      option "DIR"
+        call dotree:+1 [dent tnam]
+
+      endpick
+    endloop
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Start of main routine.
+//
+set timeth [- [now] [* 24 3600]]	//make threshold time for showing file
+
+call dotree "."
