@@ -1037,6 +1037,7 @@ next_part:                             {done processing the current part}
   {
   *   Circuit board.
   }
+(*
   string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
   string_f_int (tk2, line);
   string_append (tk, tk2);
@@ -1076,6 +1077,7 @@ next_part:                             {done processing the current part}
   putfield (tk);
 
   wout;
+*)
   {
   *   Kitting cost.
   }
