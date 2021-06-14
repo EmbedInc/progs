@@ -100,6 +100,7 @@ call :gitget string
 call :gitget stuff
 call :gitget syn
 call :gitget sys
+call :gitget usb usbser
 call :gitget utest
 call :gitget util
 call :gitget vect
