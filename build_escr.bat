@@ -7,6 +7,7 @@ rem
 setlocal
 call build_vars
 
+call src_escr dirsize
 call src_escr gitcheck
 call src_escr make_build
 call src_escr make_pic_project
