@@ -23,6 +23,7 @@ call src_prog %srcdir% copyt
 call src_prog %srcdir% carcost
 call src_prog %srcdir% csv_addval
 call src_prog %srcdir% delt
+call src_prog %srcdir% dirsize
 call src_prog %srcdir% downcase_dir
 call src_prog %srcdir% elim_redun
 call src_prog %srcdir% embed_extool

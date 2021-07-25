@@ -1,0 +1,10 @@
+                             Program DIRSIZE
+                               25 July 2021
+
+dirsize
+
+Show the size of all objects in the current directory, sorted in smallest
+to largest order.  The size of subdirectories is the size of all the files
+they contain, including in further subdirectories.
+
+There are currently no command line options.
