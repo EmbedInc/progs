@@ -1,0 +1,42 @@
+//   GITLIST
+//
+//   List all the GIT repositories in the current tree.
+//
+var new nrepo integer
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine DOTREE dir names
+//
+//   Find and handle GIT repositories in the tree DIR.  DIR is a string.
+//
+//   Names is the list of directory names from the top directory this script was
+//   run in down to the directory to scan.  The list of directories are
+//   separate by spaces.
+//
+subroutine dotree
+  var local names string = [arg 2]
+  var local namestart string = names
+
+  if [> [slen namestart] 0] then //add blank if seperator after previous names
+    append namestart " "
+    endif
+
+  loop dir [arg 1] dir
+    if [= [dent] ".git"] then
+      set nrepo [+ nrepo 1]
+      show names
+      quit
+      endif
+    call dotree:+1 [dent tnam] [str namestart [dent]]
+    endloop
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Start of main routine.
+//
+show
+call dotree "." ""
+show
+show nrepo " repositories found."
