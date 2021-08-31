@@ -8,6 +8,7 @@ setlocal
 call build_vars
 
 call src_escr gitcheck
+call src_escr gitlist
 call src_escr make_build
 call src_escr make_pic_project
 call src_escr pic_module_template

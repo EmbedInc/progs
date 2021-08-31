@@ -98,7 +98,7 @@ call :gitget sst
 call :gitget strflex
 call :gitget string
 call :gitget stuff
-call :gitget syn
+call :gitget syo
 call :gitget sys
 call :gitget usb usbser
 call :gitget utest
