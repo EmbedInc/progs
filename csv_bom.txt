@@ -1,33 +1,73 @@
                             Program CSV_BOM
-                            6 February 2010
+                            30 November 2021
 
 
 csv_bom <.csv file name>
 
 This program is used as one step in producing a bill of materials (BOM)
-from a Eagle design using version 5 or later.  This program is intended to
-be run by the BOM Eagle ULP, but its interface is fully documented here.
+from a circuit board design using Eagle version 5 or later.  This program
+is intended to be run by the BOM Eagle ULP, but its interface is fully
+documented here.
 
-The overall steps in producing a final BOM are:
+The command line argument is intended to be the name of the CSV file
+produced by the BOM ULP.  This should be "<name>_parts.csv", where NAME is
+the Eagle board name.
 
-1  -  Run the BOM ULP in Eagle from the board editor.  This produces a
-      .CSV (comma separate values) file that provides information about
-      each device.  This information includes such things as the part
-      designator, library, package, and various attributes.  The detailed
-      format of this file may change with different revisions of the BOM
-      ULP and the CSV_BOM program.
+The first line of the input file contains the names of each field. These
+are checked, and the program aborts with error if anything unexpected is
+found.  This can be due to a version mismatch between the BOM ULP and this
+program.
 
-      The BOM ULP then automatically runs this program to produce the .TSV
-      file.
+The output file will be written to the same directory as the input file,
+and will be named "<name>_bom.tsv".  This is a tab-separated values file
+intended for easy importing into spreadsheet programs.  Like a CSV file,
+the first line contains the names of the colums, and the remaining lines
+are data lines of the spreadsheet.
 
-2  -  Import the TSV file into a spread sheet program.  The fields in the
+This program performs several tasks:
+
+  1 - Derives the final description, value, and other fields from the raw
+      information such as the library name, device name, and various
+      attributes.  See the EAGLE_ATTR documentation file for a description
+      of the special attributes used in this process.
+
+  2 - Reads a parts reference file, if available, and fills in more
+      information for each part from the reference file, as appropriate.
+
+  3 - Identifies common parts and groups them on the same line of the BOM
+      with the quantity field appropriately set.
+
+  4 - Writes equations in some spreadsheet cells for automatic cost
+      computation.
+
+  5 - Formats this output for reliable importing into the spreadsheet
+      program.  The output file was tested with Microsoft Excel, but will
+      likely work with a variety of spreadsheet programs.
+
+
+The user steps in producing a BOM from an Eagle board or schematic are:
+
+  1 - Run the BOM ULP in Eagle.  This produces a .CSV (comma separate
+      values) file that provides information about each device used in the
+      board.  The information includes such things as the part designator,
+      library, package, and various attributes.  The detailed format of
+      this file may change with different revisions of the BOM ULP and the
+      CSV_BOM program.
+
+      The BOM ULP then automatically runs CSV_BOM to produce a .TSV file
+      with the BOM information.
+
+  2 - Import the TSV file into a spread sheet program.  The fields in the
       TSV file are delimited with tab characters.  CSV_BOM copies a
       template XLS file into the same directory as the CSV file.  This
       template has the format for the columns already set appropriately
       for the data in the TSV file.  It is therefore best to open the
       template, then import the TSV file from there.
 
-3  -  Inspect the spreadsheet.  If the manufacturer name, part number, and
+      In newer versions of Excel, this is done with the menu entry DATA >
+      GET DATA > LEGACY WIZARDS > FROM TEXT (LEGACY).
+
+  3 - Inspect the spreadsheet.  If the manufacturer name, part number, and
       other relevant information is not present for a part, go back to the
       schematic or the Eagle library the part came from and add this
       information.  If the information is not unique to this particular
@@ -37,14 +77,14 @@ The overall steps in producing a final BOM are:
 
       Repeat from step 1 until all possible information that can come from
       the schematic or the libraries has been added to them.  Various
-      Eagle attributes are used by the BOM generation utilities.  See the
-      EAGLE_ATTR documentation file for a description of the special
-      attributes.
+      Eagle attributes in library devices are used by the BOM generation
+      utilities.  See the EAGLE_ATTR documentation file for a description
+      of the special attributes.
 
       Note that LIBRARY > UPDATE ALL will need to be run in the schematic
       or board editor before changes in a library become visible.
 
-4  -  Add the remaining information to the BOM, such as current unit
+  4 - Add the remaining information to the BOM, such as current unit
       prices.
 
       The spreadsheet will automatically compute the parts cost for a
@@ -53,29 +93,5 @@ The overall steps in producing a final BOM are:
       number of boards in a production run.  This effects the total
       quantity required for each part and the total cost of the run.
 
-5  -  Labels for kitting can be produced from the spreadsheet.  See the
+  5 - Labels for kitting can be produced from the spreadsheet.  See the
       BOM_LABELS program description for details.
-
-The input file name on the command line must refer to a CSV file of the
-format produced by the BOM Eagle ULP.
-
-The output file will be written to the same directory as the input file
-and will have the same generic name as the input file.  The output file
-name will always end in ".tsv".
-
-This program performs several tasks:
-
-  1 - Derives the final description, value, and other fields from the raw
-      information such as the library name, device name, and various
-      attributes.  See the EAGLE_ATTR documentation file for a description
-      of the special attributes used in this process.
-
-  2 - Identifies common parts and groups them on the same line of the BOM
-      with the quantity field appropriately set.
-
-  3 - Writes equations in some spreadsheet cells for automatic cost
-      computation.
-
-  4 - Formats this output for reliable importing into the spreadsheet
-      program.  The output file was tested with Microsoft Excel, but will
-      likely work with a variety of spreadsheet programs.
