@@ -1,5 +1,5 @@
                             Program CSV_BOM
-                            30 November 2021
+                             2 March 2022
 
 
 csv_bom <.csv file name>
@@ -24,6 +24,11 @@ intended for easy importing into spreadsheet programs.  Like a CSV file,
 the first line contains the names of the colums, and the remaining lines
 are data lines of the spreadsheet.
 
+The additional output file "parts.csv" is also written.  This file
+contains one line for each unique part used.  It is in the same format as
+a parts reference file.  The purpose of the "parts.csv" file is to make it
+easy to update a parts reference file with any new parts.
+
 This program performs several tasks:
 
   1 - Derives the final description, value, and other fields from the raw
@@ -44,6 +49,8 @@ This program performs several tasks:
       program.  The output file was tested with Microsoft Excel, but will
       likely work with a variety of spreadsheet programs.
 
+  6 - Writes the "parts.csv" file for easy updating of any parts reference
+      file that might have been used.
 
 The user steps in producing a BOM from an Eagle board or schematic are:
 

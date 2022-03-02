@@ -62,6 +62,7 @@ var
   refparts: partref_list_t;            {reference parts list}
   refpart_p: partref_part_p_t;         {points to current reference part}
   nvent_p: nameval_ent_p_t;            {points to curr name/value list entry}
+  cw: csv_out_t;                       {CSV file writing state}
   olempty: boolean;                    {output line is completely empty}
   absmatch: boolean;                   {absolute part match}
 
@@ -72,7 +73,8 @@ var
 
 label
   infile_bad, loop_line, eof,
-  refmatch, doneref, have_desc, commch_same, next_commch, next_comp, next_part;
+  refmatch, doneref, have_desc, commch_same, next_commch, next_comp, next_part,
+  next_cw;
 {
 ********************************************************************************
 *
@@ -283,6 +285,64 @@ begin
 {
 ********************************************************************************
 *
+*   Subroutine NEWPART (PART_P)
+*
+*   Create a new part, initialize it, and link it to the end of the list.  The
+*   total number of parts in NP is updated.
+}
+procedure newpart (                    {create new part, init, add to end of list}
+  out     part_p: part_p_t);           {reeturned pointer to the new part}
+  val_param; internal;
+
+begin
+  util_mem_grab (sizeof(part_p^), mem_p^, false, part_p); {create new part descriptor}
+
+  part_p^.next_p := nil;               {init to no following part}
+  part_p^.line := conn.lnum;           {save input file line number of this part}
+  part_p^.qtyuse := 1.0;               {init to default quantity per usage}
+  part_p^.desig.max := size_char(part_p^.desig.str); {init var strings in the descriptor}
+  part_p^.desig.len := 0;
+  part_p^.lib.max := size_char(part_p^.lib.str);
+  part_p^.lib.len := 0;
+  part_p^.dev.max := size_char(part_p^.dev.str);
+  part_p^.dev.len := 0;
+  part_p^.devu.max := size_char(part_p^.devu.str);
+  part_p^.devu.len := 0;
+  part_p^.desc.max := size_char(part_p^.desc.str);
+  part_p^.desc.len := 0;
+  part_p^.val.max := size_char(part_p^.val.str);
+  part_p^.val.len := 0;
+  part_p^.pack.max := size_char(part_p^.pack.str);
+  part_p^.pack.len := 0;
+  part_p^.manuf.max := size_char(part_p^.manuf.str);
+  part_p^.manuf.len := 0;
+  part_p^.mpart.max := size_char(part_p^.mpart.str);
+  part_p^.mpart.len := 0;
+  part_p^.supp.max := size_char(part_p^.supp.str);
+  part_p^.supp.len := 0;
+  part_p^.spart.max := size_char(part_p^.spart.str);
+  part_p^.spart.len := 0;
+  part_p^.housenum.max := size_char(part_p^.housenum.str);
+  part_p^.housenum.len := 0;
+  part_p^.flags := [pflag_subst_k];    {init flags}
+  part_p^.same_p := nil;               {no same parts found yet}
+  part_p^.qty := 1.0;                  {init to unique part for now}
+
+  if last_p = nil
+    then begin                         {this is first part in the list}
+      first_p := part_p;               {set pointer to start of list}
+      end
+    else begin                         {adding to end of existing list}
+      last_p^.next_p := part_p;        {link new entry to end of chain}
+      end
+    ;
+  last_p := part_p;                    {update end of chain pointer}
+
+  np := np + 1;                        {count one more part in the list}
+  end;
+{
+********************************************************************************
+*
 *   Start of main routine.
 }
 begin
@@ -413,52 +473,7 @@ loop_line:                             {back here each new input file line}
   string_unpad (buf);                  {delete any trailing spaces from input line}
   if buf.len <= 0 then goto loop_line; {ignore blank lines}
   p := 1;                              {init BUF parse index}
-{
-*   Create a new part descriptor and link it to the end of the list.
-}
-  util_mem_grab (sizeof(part_p^), mem_p^, false, part_p); {create new part descriptor}
-  part_p^.next_p := nil;               {init to no following part}
-  part_p^.line := conn.lnum;           {save input file line number of this part}
-  part_p^.qtyuse := 1.0;               {init to default quantity per usage}
-  part_p^.desig.max := size_char(part_p^.desig.str); {init var strings in the descriptor}
-  part_p^.desig.len := 0;
-  part_p^.lib.max := size_char(part_p^.lib.str);
-  part_p^.lib.len := 0;
-  part_p^.dev.max := size_char(part_p^.dev.str);
-  part_p^.dev.len := 0;
-  part_p^.devu.max := size_char(part_p^.devu.str);
-  part_p^.devu.len := 0;
-  part_p^.desc.max := size_char(part_p^.desc.str);
-  part_p^.desc.len := 0;
-  part_p^.val.max := size_char(part_p^.val.str);
-  part_p^.val.len := 0;
-  part_p^.pack.max := size_char(part_p^.pack.str);
-  part_p^.pack.len := 0;
-  part_p^.manuf.max := size_char(part_p^.manuf.str);
-  part_p^.manuf.len := 0;
-  part_p^.mpart.max := size_char(part_p^.mpart.str);
-  part_p^.mpart.len := 0;
-  part_p^.supp.max := size_char(part_p^.supp.str);
-  part_p^.supp.len := 0;
-  part_p^.spart.max := size_char(part_p^.spart.str);
-  part_p^.spart.len := 0;
-  part_p^.housenum.max := size_char(part_p^.housenum.str);
-  part_p^.housenum.len := 0;
-  part_p^.flags := [pflag_subst_k];    {init flags}
-  part_p^.same_p := nil;               {no same parts found yet}
-  part_p^.qty := 1.0;                  {init to unique part for now}
-
-  if last_p = nil
-    then begin                         {this is first part in the list}
-      first_p := part_p;               {set pointer to start of list}
-      end
-    else begin                         {adding to end of existing list}
-      last_p^.next_p := part_p;        {link new entry to end of chain}
-      end
-    ;
-  last_p := part_p;                    {update end of chain pointer}
-
-  np := np + 1;                        {count one more part in the list}
+  newpart (part_p);                    {make new part, init, add to end of list}
 {
 *   Read the data from the input file line into the new part descriptor.  The
 *   new descriptor is pointed to by PART_P.
@@ -626,8 +641,22 @@ eof:                                   {end of input file encountered}
   sys_msg_parm_int (msg_parm[1], np);  {show number of compents read in}
   sys_message_parms ('stuff', 'bom_ncomponents', msg_parm, 1);
 {
-*   All done reading the input file.  All the individual components are in a list
-*   starting at where FIRST_P is pointing.
+*   All done reading the input file.
+*
+****************************************
+*
+*   Add the circuit board as a special part.
+}
+  newpart (part_p);                    {create the new blank part}
+
+  string_vstring (part_p^.desc, 'Circuit board'(0), -1);
+  string_copy (gnam, tk);              {make upper case circuit board name}
+  string_upcase (tk);
+  string_copy (tk, part_p^.val);
+  part_p^.flags := part_p^.flags - [pflag_subst_k]; {not allowed to substitute}
+{
+*   All the individual components are in a list starting at where FIRST_P is
+*   pointing.
 *
 ****************************************
 *
@@ -1008,50 +1037,6 @@ next_part:                             {done processing the current part}
 *   board.
 }
   {
-  *   Circuit board.
-  }
-(*
-  string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*A$1'(0));
-  putfield (tk);
-
-  putfield (string_v('1'));            {B, quantity}
-  putblank;                            {C, designators}
-
-  string_copy (gnam, tk);              {D, description}
-  string_upcase (tk);
-  string_appends (tk, ' circuit board');
-  putfield (tk);
-
-  putblank;                            {E, value}
-  putblank;                            {F, package}
-  putblank;                            {G, substitution allowed}
-  putblank;                            {H, In-house}
-  putblank;                            {I, manufacturer}
-  putblank;                            {J, manuf part number}
-  putblank;                            {K, supplier}
-  putblank;                            {L, supplier part number}
-  putblank;                            {M, $Part}
-
-  string_vstring (tk, '=B'(0), -1);    {N, $Board, =Bn*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  string_vstring (tk, '=A'(0), -1);    {O, $All, =An*Mn}
-  string_f_int (tk2, line);
-  string_append (tk, tk2);
-  string_appends (tk, '*M'(0));
-  string_append (tk, tk2);
-  putfield (tk);
-
-  wout;
-*)
-  {
   *   Kitting cost.
   }
   string_vstring (tk, '=B'(0), -1);    {A, Qty/lot, =Bn*A$1}
@@ -1252,5 +1237,67 @@ next_part:                             {done processing the current part}
     fnam,                              {destination file name}
     [file_copy_replace_k],             {overwrite existing file, if any}
     stat);
+  sys_error_abort (stat, '', '', nil, 0);
+{
+****************************************
+*
+*   Write the PARTS.CSV file.  This file contains one line for each unique part
+*   used, in the same format as a parts reference file.  The fields on each line
+*   are:
+*
+*     Desc,Value,Package,Subst,Inhouse #,Manuf,Manuf part #,Supplier,Supp part #
+}
+  string_pathname_join (               {make output file pathname}
+    dir,                               {directory to contain the file}
+    string_v('parts'),                 {generic name of the file, CSV suffix assumed later}
+    fnam);                             {returned full pathname}
+  csv_out_open (fnam, cw, stat);       {open CSV output file}
+  sys_error_abort (stat, '', '', nil, 0);
+  writeln ('Writing "', cw.conn.tnam.str:cw.conn.tnam.len, '"');
+
+  part_p := first_p;                   {init current component to first in list}
+  while part_p <> nil do begin         {scan thru the entire list of components}
+    if pflag_nobom_k in part_p^.flags  {this part not to be added to the BOM ?}
+      then goto next_cw;
+    if pflag_comm_k in part_p^.flags then goto next_cw; {already on previous line ?}
+
+    csv_out_vstr (cw, part_p^.desc, stat); {description}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.val, stat); {value}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.pack, stat); {package}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    if pflag_subst_k in part_p^.flags
+      then string_vstring (tk, 'Yes'(0), -1)
+      else string_vstring (tk, 'No'(0), -1);
+    csv_out_vstr (cw, tk, stat);       {substitute allowed yes/no}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.housenum, stat); {in-house part number}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.manuf, stat); {manufacturer name}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.mpart, stat); {manufacturer part number}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.supp, stat); {supplier name}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_vstr (cw, part_p^.spart, stat); {supplier part number}
+    sys_error_abort (stat, '', '', nil, 0);
+
+    csv_out_line (cw, stat);           {write this line to output file}
+    sys_error_abort (stat, '', '', nil, 0);
+
+next_cw:                               {done processing the current part}
+    part_p := part_p^.next_p;          {advance to next component}
+    end;                               {back and process this new component}
+
+  csv_out_close (cw, stat);
   sys_error_abort (stat, '', '', nil, 0);
   end.
