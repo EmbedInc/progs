@@ -54,6 +54,7 @@ src_progl rename_sym
 src_progl run_cmline
 src_progl runon
 src_progl seqn3
+src_progl server
 src_progl slink
 src_progl sum
 src_progl test_args

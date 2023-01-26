@@ -1,0 +1,43 @@
+                           Embed Program SERVER
+                             26 January 2023
+
+server [options]
+
+Execute a program in a separate process, which is then left to run on its
+own.  In effect the new process becomes a server that continues running
+after the SERVER command exits.
+
+The command line options are:
+
+  -IN <dir>
+
+    Sets the initial directory for the new process.  The default is the
+    current directory when SERVER is run.
+
+  -WAIT <seconds>
+
+     Wait the specified time before releasing the process.  The process is
+     checked before it is released to see if it has already stopped.  If
+     so, SERVER returns with an error if the process exited with an error.
+     During the wait time, the standard output and error streams of the
+     process are connected to the standard output error streams,
+     respectively, of SERVER.  If the wait time expires before the process
+     exits, then SERVER will exit normally leaving the new process
+     running.
+
+     The default is to release the process immediately without checking
+     how it may have completed.
+
+  -RUN <command line>
+  <command line>
+
+     Gives the command line to run in the separate process.  All SERVER
+     command line tokens after -RUN are passed to the process, so -RUN
+     must be the last SERVER command line option, if used.  The process
+     command line can also be implied (without the -RUN option) if its
+     first token does not start with a dash (-).  There is no default
+     command line.  It is an error if no command line is supplied.
+
+Note that there is no I/O connection to the new process once SERVER exits.
+The program STDIO can be useful to launch a server process with its
+standard I/O connected to system files.
