@@ -4,7 +4,8 @@ rem   Set up for building a Pascal module.
 rem
 call build_vars
 
-call src_get %srcdir% cogserve2.ins.pas
+call treename_var (cog)src/%srcdir% tnam
+cd /d "%tnam%"
 
 call src_getfrom sys base.ins.pas
 call src_getfrom sys sys.ins.pas

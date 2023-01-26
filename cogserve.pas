@@ -14,7 +14,7 @@
 *     zero.
 }
 program cogserve;
-%include 'cogserve2.ins.pas';
+%include 'cogserve_prog.ins.pas';
 
 var
   serv: file_inet_port_serv_t;         {handle to our public server socket}

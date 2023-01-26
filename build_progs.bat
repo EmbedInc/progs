@@ -13,61 +13,61 @@ call src_env %srcdir% progs.msg
 
 rem   Programs with Pascal source modules.
 rem
-call src_prog %srcdir% afont_font
-call src_prog %srcdir% align_comments
-call src_prog %srcdir% bom_labels
-call src_prog %srcdir% c-f
-call src_prog %srcdir% cogserve cogserve_util cogserve_sys
-call src_prog %srcdir% copya
-call src_prog %srcdir% copyt
-call src_prog %srcdir% carcost
-call src_prog %srcdir% csv_addval
-call src_prog %srcdir% delt
-call src_prog %srcdir% dirsize
-call src_prog %srcdir% downcase_dir
-call src_prog %srcdir% elim_redun
-call src_prog %srcdir% embed_extool
-call src_prog %srcdir% f-c
-call src_prog %srcdir% files_same
-call src_prog %srcdir% find_string
-call src_prog %srcdir% fixname_nef
-call src_prog %srcdir% flines
-call src_prog %srcdir% font_afont
-call src_prog %srcdir% get_newer
-call src_prog %srcdir% get_pic_info
-call src_prog %srcdir% hex_dump
-call src_prog %srcdir% instek_dump
-call src_prog %srcdir% l
-call src_prog %srcdir% macadr
-call src_prog %srcdir% make_debug
-call src_prog %srcdir% menu_entry
-call src_prog %srcdir% mort
-call src_prog %srcdir% mpmem
-call src_prog %srcdir% mxlookup
-call src_prog %srcdir% pic_activity
-call src_prog %srcdir% plotfilt
-call src_prog %srcdir% primefact
-call src_prog %srcdir% quad
-call src_prog %srcdir% rdbin
-call src_prog %srcdir% rename_raw
-call src_prog %srcdir% rename_sym
-call src_prog %srcdir% run_cmline
-call src_prog %srcdir% runon
-call src_prog %srcdir% seqn3
-call src_prog %srcdir% slink
-call src_prog %srcdir% sum
-call src_prog %srcdir% test_args
-call src_prog %srcdir% test_sio
-call src_prog %srcdir% test_usb
-call src_prog %srcdir% text_htm
-call src_prog %srcdir% todo_file
-call src_prog %srcdir% touch
-call src_prog %srcdir% treename
-call src_prog %srcdir% waitenter
-call src_prog %srcdir% wav_copy
-call src_prog %srcdir% wav_csv
-call src_prog %srcdir% wav_info
-call src_prog %srcdir% xcopyright
+src_progl afont_font
+src_progl align_comments
+src_progl bom_labels
+src_progl c-f
+src_progl cogserve
+src_progl copya
+src_progl copyt
+src_progl carcost
+src_progl csv_addval
+src_progl delt
+src_progl dirsize
+src_progl downcase_dir
+src_progl elim_redun
+src_progl embed_extool
+src_progl f-c
+src_progl files_same
+src_progl find_string
+src_progl fixname_nef
+src_progl flines
+src_progl font_afont
+src_progl get_newer
+src_progl get_pic_info
+src_progl hex_dump
+src_progl instek_dump
+src_progl l
+src_progl macadr
+src_progl make_debug
+src_progl menu_entry
+src_progl mort
+src_progl mpmem
+src_progl mxlookup
+src_progl pic_activity
+src_progl plotfilt
+src_progl primefact
+src_progl quad
+src_progl rdbin
+src_progl rename_raw
+src_progl rename_sym
+src_progl run_cmline
+src_progl runon
+src_progl seqn3
+src_progl slink
+src_progl sum
+src_progl test_args
+src_progl test_sio
+src_progl test_usb
+src_progl text_htm
+src_progl todo_file
+src_progl touch
+src_progl treename
+src_progl waitenter
+src_progl wav_copy
+src_progl wav_csv
+src_progl wav_info
+src_progl xcopyright
 
 rem   Programs with C source modules.
 rem

@@ -5,7 +5,7 @@
 module cogserve_sys;
 define csrv_cmd_run;
 define csrv_wait_client;
-%include 'cogserve2.ins.pas';
+%include 'cogserve_prog.ins.pas';
 %include 'sys_sys2.ins.pas';
 {
 *****************************************************************************

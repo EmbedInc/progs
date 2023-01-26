@@ -3,7 +3,7 @@
 module cogserve;
 define csrv_client;
 define csrv_version_sequence;
-%include 'cogserve2.ins.pas';
+%include 'cogserve_prog.ins.pas';
 
 define csrv;                           {define the "common block"}
 {
