@@ -15,7 +15,6 @@ rem   Programs with Pascal source modules.
 rem
 src_progl afont_font
 src_progl align_comments
-src_progl bom_labels
 src_progl c-f
 src_progl cogserve
 src_progl copya
