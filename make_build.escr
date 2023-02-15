@@ -174,11 +174,16 @@ if found_aspic then
   write "set picclass=PIC"
   write "set t_parms="
   endif
-
-write "call treename_var ""(cog)src/%srcdir%/debug_%fwname%.bat"" tnam"
-write "make_debug ""%tnam%"""
-write "call ""%tnam%"""
-
+if found_pic
+  then
+    write "call treename_var ""(cog)src/%srcdir%/debug_%fwname%.bat"" tnam"
+    write "make_debug ""%tnam%"""
+    write "call ""%tnam%"""
+  else
+    write "set pictype="
+    write "set picclass="
+    write "set t_parms="
+  endif
 writepop
 
 //**************************************
@@ -354,7 +359,6 @@ if [exist lnam fnam]
         endif
 
       write "call src_go %srcdir%"
-      write "call src_getfrom sys base.ins.pas"
       write "call src_getfrom sys sys.ins.pas"
       write "call src_getfrom util util.ins.pas"
       write "call src_getfrom string string.ins.pas"
@@ -425,7 +429,7 @@ if [exist lnam fnam]
       write "setlocal"
       write "call build_pasinit"
       write ""
-      write "call src_prog %srcdir% test_" libname
+      write "src_progl test_" libname
 
       writepop
       endif
