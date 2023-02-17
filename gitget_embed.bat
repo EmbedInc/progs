@@ -64,6 +64,7 @@ call :gitget code
 call :gitget csvana
 call :gitget displ
 call :gitget dspic
+call :gitget eagle
 call :gitget email
 call :gitget escr
 call :gitget file
