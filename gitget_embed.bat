@@ -81,6 +81,7 @@ call :gitget math
 call :gitget mdev
 call :gitget menu
 call :gitget mlang
+call :gitget part
 call :gitget pbp
 call :gitget phot
 call :gitget pic
