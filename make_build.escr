@@ -103,6 +103,10 @@ loop                         //back here until get to top level SOURCE directory
 
 set source [str "(cog)source/" source]
 //
+//   Make sure the correspoding SRC directory exists.
+//
+dir exist [tnam "(cog)src/" srcdir]
+//
 //   Scan the files in this directory to find what kind of source code is here.
 //
 loop dir "." file
@@ -162,28 +166,28 @@ if found_pic
   else
     write "set fwname="
   endif
-if found_dspic then
-  var exist pic string = "33EP512GM604"
-  write "set pictype=" pic
-  write "set picclass=dsPIC"
-  write "set t_parms=-qv"
-  endif
-if found_aspic then
-  var exist pic string = "16F876"
-  write "set pictype=" pic
-  write "set picclass=PIC"
-  write "set t_parms="
-  endif
-if found_pic
-  then
-    write "call treename_var ""(cog)src/%srcdir%/debug_%fwname%.bat"" tnam"
-    write "make_debug ""%tnam%"""
-    write "call ""%tnam%"""
-  else
+
+pick first
+  optionif found_dspic
+    var exist pic string = "33EP512GM604"
+    write "set pictype=" pic
+    write "set picclass=dsPIC"
+    write "set t_parms=-qv"
+  optionif found_aspic
+    var exist pic string = "16F876"
+    write "set pictype=" pic
+    write "set picclass=PIC"
+    write "set t_parms="
+  optionelse
     write "set pictype="
     write "set picclass="
     write "set t_parms="
-  endif
+  endpick
+
+write "call treename_var ""(cog)src/%srcdir%/debug_%fwname%.bat"" tnam"
+write "make_debug ""%tnam%"""
+write "call ""%tnam%"""
+
 writepop
 
 //**************************************
