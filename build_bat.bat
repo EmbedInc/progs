@@ -7,6 +7,7 @@ rem
 setlocal
 call build_vars
 
+call src_bat dbg
 call src_bat doc
 call src_bat eagle_img
 call src_bat eagle_pcb

@@ -15,8 +15,10 @@ var
   wrlock: sys_sys_threadlock_t;        {lock for writing to standard output}
   thid_brk: sys_sys_thread_id_t;       {ID of thread to show time breaks}
   thid_in: sys_sys_thread_id_t;        {ID of low level serial line input thread}
+  thid_send: sys_sys_thread_id_t;      {ID of output buffer sending thread}
   conf: file_sio_config_t;             {serial line configuration options}
   ev_recv: sys_sys_event_id_t;         {signalled when byte received and shown}
+  ev_send: sys_sys_event_id_t;         {signalled when sending thread exits}
   ii: sys_int_machine_t;               {scratch integer and loop counter}
   prompt:                              {prompt string for entering command}
     %include '(cog)lib/string4.ins.pas';
@@ -31,6 +33,7 @@ var
   usbname:                             {specific name of USB device}
     %include '(cog)lib/string80.ins.pas';
   i1: sys_int_machine_t;               {integer command parameters}
+  repout: boolean;                     {repeat output until users stops}
 
   opt:                                 {upcased command line option}
     %include '(cog)lib/string_treename.ins.pas';
@@ -44,7 +47,7 @@ var
 label
   done_test_sio, next_opt, err_parm, parm_bad, done_opts,
   loop_iline, loop_hex, tkline, loop_tk,
-  done_cmd, err_cmparm, leave;
+  done_cmd, err_cmparm, err_extra, leave;
 {
 ****************************************************************************
 *
@@ -211,6 +214,47 @@ begin
       end;
     end;                               {loop back}
 
+  end;
+{
+****************************************************************************
+*
+*   Subroutine THREAD_SEND (ARG)
+*
+*   Send the bytes in OBUF.  The sending is repeated as long as REPOUT is
+*   TRUE.  The contents of OBUF is always sent at least once.  This thread
+*   exits when done sending.
+}
+procedure thread_send (                {send bytes in OBUF, repeat on REPOUT}
+  in      arg: sys_int_adr_t);         {unused argument}
+  val_param; internal;
+
+label
+  loop;
+
+begin
+  if obuf.len <= 0 then return;        {buffer is empty, nothing to do ?}
+
+loop:                                  {back here to repeat sending buffer}
+  if usb
+    then begin                         {connected via USB}
+      file_write_embusb (              {write the bytes in OBUF}
+        obuf.str,                      {the data bytes to write}
+        conn,                          {connection to the device}
+        obuf.len,                      {number of bytes to write}
+        stat);
+      end
+    else begin                         {connected via serial line}
+      file_write_sio_rec (obuf, conn, stat); {send the data bytes}
+      end
+    ;
+  if sys_error(stat) then begin        {error on sending ?}
+    lockout;
+    sys_error_print (stat, '', '', nil, 0);
+    unlockout;
+    return;
+    end;
+
+  if repout then goto loop;            {keep repeating the output ?}
   end;
 {
 ****************************************************************************
@@ -593,8 +637,11 @@ loop_iline:                            {back here each new input line}
     p := p + 1;                        {skip over this blank}
     end;
   obuf.len := 0;                       {init to no bytes to send from this command}
+  repout := false;                     {init to not repeat the output bytes}
+
   if (buf.str[p] = '''') or (buf.str[p] = '"') {quoted string ?}
     then goto tkline;                  {this line contains data tokens}
+
   string_token (buf, p, opt, stat);    {get command name token into OPT}
   if string_eos(stat) then goto loop_iline; {ignore line if no command found}
   if sys_error(stat) then goto err_cmparm;
@@ -603,7 +650,7 @@ loop_iline:                            {back here each new input line}
   sys_error_none (stat);
   string_upcase (opt);
   string_tkpick80 (opt,                {pick command name from list}
-    '? HELP Q S H',
+    '? HELP Q S H SQ',
     pick);
   case pick of
 {
@@ -617,6 +664,7 @@ loop_iline:                            {back here each new input line}
   writeln ('S chars     - Remaining characters sent as ASCII');
   writeln ('H hex ... hex - Data bytes, tokens interpreted in hexadecimal');
   writeln ('val ... val - Integer bytes or strings, strings must be quoted, "" or ''''');
+  writeln ('SQ          - Emit square wave at 1/2 baud frequency');
   writeln ('Integer tokens have the format: [base#]value with decimal default.');
   unlockout;
   end;
@@ -644,6 +692,16 @@ loop_hex:                              {back here each new hex value}
   i1 := i1 & 255;                      {force into 8 bits}
   string_append1 (obuf, chr(i1));      {one more byte to send due to this command}
   goto loop_hex;                       {back to get next command line token}
+  end;
+{
+*  SQ
+}
+6: begin
+  string_token (buf, p, parm, stat);   {try to get a command parameter}
+  if not string_eos(stat) then goto err_extra; {found parameter ?}
+
+  string_append1 (obuf, chr(16#55));   {byte value to send}
+  repout := true;                      {repeat the buffer contents until user stops}
   end;
 {
 *   Unrecognized command.
@@ -683,26 +741,42 @@ loop_tk:                               {back here to get each new data token}
 
 done_cmd:                              {done processing the current command}
   if sys_error(stat) then goto err_cmparm; {handle error, if any}
-  if obuf.len > 0 then begin           {one or more bytes to send ?}
-    if usb
-      then begin                       {connected via USB}
-        file_write_embusb (            {write the bytes in OBUF}
-          obuf.str,                    {the data bytes to write}
-          conn,                        {connection to the device}
-          obuf.len,                    {number of bytes to write}
-          stat);
-        end
-      else begin                       {connected via serial line}
-        file_write_sio_rec (obuf, conn, stat); {send the data bytes}
-        end
-      ;
-    if sys_error(stat) then goto err_cmparm;
+  if obuf.len <= 0 then goto loop_iline; {nothing to send, back for next command ?}
+
+  if repout then begin                 {repeat output until user stops ?}
+    lockout;
+    string_prompt (string_v('Press ENTER to stop output: '));
+    newline := false;
+    unlockout;
     end;
+  sys_thread_create (                  {start thread to send OBUF contents}
+    addr(thread_send),                 {address of thread root routine}
+    0,                                 {argument passed to thread (unused)}
+    thid_send,                         {returned thread ID}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  sys_thread_event_get (thid_send, ev_send, stat); {get thread exit event}
+  sys_error_abort (stat, '', '', nil, 0);
+  if repout then begin                 {repeating output until user stops ?}
+    string_readin (parm);              {wait for user to hit ENTER}
+    newline := true;
+    repout := false;                   {stop the repeated sending}
+    end;
+  sys_event_wait (ev_send, stat);      {wait for sending thread to exit}
+  sys_error_abort (stat, '', '', nil, 0);
+  sys_event_del_bool (ev_send);        {delete the thread-exit event}
+
   goto loop_iline;                     {back to process next command input line}
 
 err_cmparm:                            {parameter error, STAT set accordingly}
   lockout;
   sys_error_print (stat, '', '', nil, 0);
+  unlockout;
+  goto loop_iline;
+
+err_extra:                             {extra command line parameter found}
+  lockout;
+  writeln ('Parameter "', parm.str:parm.len, '" is invalid or unrecognized.');
   unlockout;
   goto loop_iline;
 
