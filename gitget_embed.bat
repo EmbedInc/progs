@@ -61,7 +61,6 @@ call :gitget buildscr
 call :gitget can
 call :gitget chess
 call :gitget code
-call :gitget csvana
 call :gitget displ
 call :gitget dspic
 call :gitget eagle
