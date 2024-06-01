@@ -362,11 +362,7 @@ if [exist lnam fnam]
         write ""
         endif
 
-      write "call src_go %srcdir%"
-      write "call src_getfrom sys sys.ins.pas"
-      write "call src_getfrom util util.ins.pas"
-      write "call src_getfrom string string.ins.pas"
-      write "call src_getfrom file file.ins.pas"
+      write "call src_getbase"
       write "call src_getfrom stuff stuff.ins.pas"
       write ""
 
