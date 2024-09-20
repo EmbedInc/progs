@@ -20,6 +20,7 @@ subroutine repo
   dir [arg 1]
   run "cmd /c git status -s >" tempfile
   if [> [file len tempfile] 0] then
+    show
     set nchanged [+ nchanged 1]
     show [dir]
     run "copya -in """ tempfile """ -list"
@@ -48,7 +49,6 @@ subroutine dotree
 //
 //   Start of main routine.
 //
-show
 call dotree "."
 show
 show nrepo " repositories checked, " nchanged " with changes found."
