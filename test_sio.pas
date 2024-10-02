@@ -34,6 +34,7 @@ var
     %include '(cog)lib/string80.ins.pas';
   i1: sys_int_machine_t;               {integer command parameters}
   repout: boolean;                     {repeat output until users stops}
+  showout: boolean;                    {show bytes being sent}
 
   opt:                                 {upcased command line option}
     %include '(cog)lib/string_treename.ins.pas';
@@ -228,6 +229,9 @@ procedure thread_send (                {send bytes in OBUF, repeat on REPOUT}
   in      arg: sys_int_adr_t);         {unused argument}
   val_param; internal;
 
+var
+  ii: sys_int_machine_t;
+
 label
   loop;
 
@@ -235,6 +239,14 @@ begin
   if obuf.len <= 0 then return;        {buffer is empty, nothing to do ?}
 
 loop:                                  {back here to repeat sending buffer}
+  if showout then begin                {show the output bytes}
+    write ('>');
+    for ii := 1 to obuf.len do begin
+      write (' ', ord(obuf.str[ii]));
+      end;
+    writeln;
+    end;
+
   if usb
     then begin                         {connected via USB}
       file_write_embusb (              {write the bytes in OBUF}
@@ -650,7 +662,7 @@ loop_iline:                            {back here each new input line}
   sys_error_none (stat);
   string_upcase (opt);
   string_tkpick80 (opt,                {pick command name from list}
-    '? HELP Q S H SQ',
+    '? HELP Q S H SQ SHOW',
     pick);
   case pick of
 {
@@ -664,6 +676,7 @@ loop_iline:                            {back here each new input line}
   writeln ('S chars     - Remaining characters sent as ASCII');
   writeln ('H hex ... hex - Data bytes, tokens interpreted in hexadecimal');
   writeln ('val ... val - Integer bytes or strings, strings must be quoted, "" or ''''');
+  writeln ('SHOW [out]  - Enable/disable showing debug output');
   writeln ('SQ          - Emit square wave at 1/2 baud frequency');
   writeln ('Integer tokens have the format: [base#]value with decimal default.');
   unlockout;
@@ -704,6 +717,28 @@ loop_hex:                              {back here each new hex value}
   repout := true;                      {repeat the buffer contents until user stops}
   end;
 {
+*   SHOW [out]
+}
+7: begin
+  showout := false;                    {init all debug output to disabled}
+
+  while true do begin                  {back here to get each parameter}
+    string_token (buf, p, parm, stat);   {try to get another parameter}
+    if string_eos(stat) then goto done_cmd; {exhausted the command line ?}
+    string_upcase (parm);              {make upper case for token matching}
+    string_tkpick80 (parm,
+      'OUT',
+      pick);
+    case pick of
+1:    begin                            {OUT}
+        showout := true;
+        end;
+otherwise
+      goto err_cmparm;
+      end;
+    end;
+  end;
+{
 *   Unrecognized command.
 }
 otherwise
@@ -724,10 +759,11 @@ loop_tk:                               {back here to get each new data token}
     if p >= buf.len then goto done_cmd; {nothing more left on this command line ?}
     p := p + 1;                        {skip over this blank}
     end;
+
   if (buf.str[p] = '"') or (buf.str[p] = '''') then begin {token is a quoted string ?}
     string_token (buf, p, parm, stat); {get resulting string into PARM}
     if sys_error(stat) then goto err_cmparm;
-    string_append (obuf, buf);         {add string to bytes to send}
+    string_append (obuf, parm);        {add string to bytes to send}
     goto loop_tk;                      {back to get next token}
     end;
 
