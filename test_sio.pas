@@ -202,9 +202,11 @@ begin
     if sys_event_wait_tout (ev_recv, tbreak, stat)
       then begin                       {timeout, break detected}
         if recv then begin             {new stuff written since last break ?}
-          lockout;
-          writeln;                     {write a blank line to show the break}
-          unlockout;
+          if newline then begin        {input is at start of line ?}
+            lockout;
+            writeln;                   {write a blank line to show the break}
+            unlockout;
+            end;
           recv := false;               {reset to no new byte since break}
           end;
         end
@@ -522,6 +524,7 @@ begin
   unlockout;
 
   while term do begin                  {keep looping as long as in terminal mode}
+    sys_wait (0.100);                  {time for response to previous command}
     lockout;
     string_prompt (string_v('> '));    {show terminal mode prompt}
     newline := false;
