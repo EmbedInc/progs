@@ -7,6 +7,7 @@ const
   def_baud_k = file_baud_115200_k;     {default baud rate}
   tbreak = 0.5;                        {time for break in received stream, seconds}
   max_msg_parms = 2;                   {max parameters we can pass to a message}
+  char_cr = 13;                        {carriage return character code}
 
 var
   sio: sys_int_machine_t;              {number of system serial line to use}
@@ -15,10 +16,8 @@ var
   wrlock: sys_sys_threadlock_t;        {lock for writing to standard output}
   thid_brk: sys_sys_thread_id_t;       {ID of thread to show time breaks}
   thid_in: sys_sys_thread_id_t;        {ID of low level serial line input thread}
-  thid_send: sys_sys_thread_id_t;      {ID of output buffer sending thread}
   conf: file_sio_config_t;             {serial line configuration options}
   ev_recv: sys_sys_event_id_t;         {signalled when byte received and shown}
-  ev_send: sys_sys_event_id_t;         {signalled when sending thread exits}
   ii: sys_int_machine_t;               {scratch integer and loop counter}
   prompt:                              {prompt string for entering command}
     %include '(cog)lib/string4.ins.pas';
@@ -32,9 +31,12 @@ var
   usb: boolean;                        {connection is over USB, not serial line}
   usbname:                             {specific name of USB device}
     %include '(cog)lib/string80.ins.pas';
+  term_end:                            {sequence for ending terminal mode}
+    %include '(cog)lib/string4.ins.pas';
   i1: sys_int_machine_t;               {integer command parameters}
   repout: boolean;                     {repeat output until users stops}
   showout: boolean;                    {show bytes being sent}
+  term: boolean;                       {in terminal mode}
 
   opt:                                 {upcased command line option}
     %include '(cog)lib/string_treename.ins.pas';
@@ -50,7 +52,7 @@ label
   loop_iline, loop_hex, tkline, loop_tk,
   done_cmd, err_cmparm, err_extra, leave;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine LOCKOUT
 *
@@ -64,7 +66,7 @@ begin
   newline := true;                     {init to STDOUT will be at start of line}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine UNLOCKOUT
 *
@@ -76,12 +78,12 @@ begin
   sys_thread_lock_leave (wrlock);
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine WHEX (B)
 *
-*   Write the byte value in the low 8 bits of B as two hexadecimal digits
-*   to standard output.
+*   Write the byte value in the low 8 bits of B as two hexadecimal digits to
+*   standard output.
 }
 procedure whex (                       {write hex byte to standard output}
   in      b: sys_int_machine_t);       {byte value in low 8 bits}
@@ -105,13 +107,13 @@ begin
   write (tk.str:tk.len);               {write the string to standard output}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine WDEC (B)
 *
-*   Write the byte value in the low 8 bits of B as an unsigned decimal
-*   integer to standard output.  Exactly 3 characters are written with
-*   leading zeros as blanks.
+*   Write the byte value in the low 8 bits of B as an unsigned decimal integer
+*   to standard output.  Exactly 3 characters are written with leading zeros as
+*   blanks.
 }
 procedure wdec (                       {write byte to standard output in decimal}
   in      b: sys_int_machine_t);       {byte value in low 8 bits}
@@ -134,12 +136,12 @@ begin
   write (tk.str:tk.len);               {write the string to standard output}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine WPRT (B)
 *
-*   Show the byte value in the low 8 bits of B as a character, if it is
-*   a valid character code.  If not, write a description of the code.
+*   Show the byte value in the low 8 bits of B as a character, if it is a valid
+*   character code.  If not, write a description of the code.
 }
 procedure wprt (                       {show printable character to standard output}
   in      b: sys_int_machine_t);       {byte value in low 8 bits}
@@ -173,13 +175,13 @@ otherwise
     end;                               {end of special handling cases}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine THREAD_BREAK (ARG)
 *
-*   This routine is run in a separate thread.  It writes a single blank line
-*   to the output whenever there is a break longer than TBREAK seconds in
-*   the received byte stream.
+*   This routine is run in a separate thread.  It writes a single blank line to
+*   the output whenever there is a break longer than TBREAK seconds in the
+*   received byte stream.
 *
 *   When the receiving thread gets and shows a byte, it notifies the EV_RECV
 *   event.  This thread waits on the EV_RECV event or a timeout.  If the
@@ -217,7 +219,7 @@ begin
 
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine THREAD_SEND (ARG)
 *
@@ -269,13 +271,13 @@ loop:                                  {back here to repeat sending buffer}
   if repout then goto loop;            {keep repeating the output ?}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine THREAD_IN (ARG)
 *
-*   This routine is run in a separate thread.  It reads data bytes
-*   from the serial port and writes information about the received
-*   data to standard output.
+*   This routine is run in a separate thread.  It reads data bytes from the
+*   serial port and writes information about the received data to standard
+*   output.
 }
 procedure thread_in (                  {get data bytes from serial line}
   in      arg: sys_int_adr_t);         {unused argument}
@@ -284,6 +286,7 @@ procedure thread_in (                  {get data bytes from serial line}
 var
   b: sys_int_machine_t;                {data byte value}
   tk: string_var32_t;                  {scratch token}
+  ibuf: string_var8192_t;              {one line input buffer}
 
 label
   loop;
@@ -331,11 +334,33 @@ begin
 *   Executable code for subroutine THREAD_IN.
 }
 begin
-  tk.max := size_char(tk.str);         {init local var string}
+  tk.max := size_char(tk.str);         {init local var strings}
+  ibuf.max := size_char(ibuf.str);
+  ibuf.len := 0;
 
 loop:                                  {back here each new response opcode}
   b := ibyte;                          {get response opcode byte}
   sys_event_notify_bool (ev_recv);     {indicate a byte was received}
+
+  if term then begin                   {in terminal mode ?}
+    if b = char_cr then begin          {CR, ends input text line}
+      lockout;
+      writeln (ibuf.str:ibuf.len);     {show accumulated input line}
+      unlockout;
+      ibuf.len := 0;                   {reset received input line to empty}
+      goto loop;                       {back for next input character}
+      end;
+    if b < 32 then goto loop;          {ignore control characters}
+    string_append1 (ibuf, chr(b));     {add this char to end of received line}
+    goto loop;
+    end;
+
+  if ibuf.len > 0 then begin           {we have partial input from terminal mode ?}
+    lockout;
+    writeln (ibuf.str:ibuf.len);       {show accumulated input line}
+    unlockout;
+    ibuf.len := 0;                     {reset received input line to empty}
+    end;
 
   lockout;                             {acquire exclusive lock on standard output}
   whex (b);                            {show byte value in HEX}
@@ -349,7 +374,7 @@ loop:                                  {back here each new response opcode}
   goto loop;                           {back to read next byte from serial line}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine CONNECT_SIO
 *
@@ -372,7 +397,7 @@ begin
   usb := false;                        {indicate not connected via USB}
   end;
 {
-****************************************************************************
+********************************************************************************
 *
 *   Subroutine CONNECT_USB
 *
@@ -437,6 +462,83 @@ begin
 {
 ****************************************************************************
 *
+*   Subroutine SEND_OBUF
+*
+*   Send the contents of the output buffer OBUF.  When REPOUT is TRUE, the
+*   contents is sent repeatedly until the user hits ENTER.  In that case,
+*   the user is prompted to do so before the repeated sending.  REPOUT will
+*   be reset to FALSE.
+}
+procedure send_obuf;
+
+var
+  thid_send: sys_sys_thread_id_t;      {ID of output buffer sending thread}
+  ev_send: sys_sys_event_id_t;         {signalled when sending thread exits}
+  stat: sys_err_t;                     {completion status}
+
+begin
+  if obuf.len <= 0 then return;        {nothing to send ?}
+
+  if repout then begin                 {repeat output until user stops ?}
+    lockout;
+    string_prompt (string_v('Press ENTER to stop output: '));
+    newline := false;
+    unlockout;
+    end;
+  sys_thread_create (                  {start thread to send OBUF contents}
+    addr(thread_send),                 {address of thread root routine}
+    0,                                 {argument passed to thread (unused)}
+    thid_send,                         {returned thread ID}
+    stat);
+  sys_error_abort (stat, '', '', nil, 0);
+  sys_thread_event_get (thid_send, ev_send, stat); {get thread exit event}
+  sys_error_abort (stat, '', '', nil, 0);
+  if repout then begin                 {repeating output until user stops ?}
+    string_readin (parm);              {wait for user to hit ENTER}
+    newline := true;
+    repout := false;                   {stop the repeated sending}
+    end;
+  sys_event_wait (ev_send, stat);      {wait for sending thread to exit}
+  sys_error_abort (stat, '', '', nil, 0);
+  sys_event_del_bool (ev_send);        {delete the thread-exit event}
+  end;
+{
+****************************************************************************
+*
+*   Subroutine TERMINAL_GET
+*
+*   Process user input in terminal mode.
+*
+*   In terminal mode, user input lines are sent exactly as received, with
+*   a carriage return added at the end.  The special input of a single ESC
+*   character ends terminal mode, back to character mode.  User inputs are
+*   only interpreted as commands in character mode.
+}
+procedure terminal_get;
+
+begin
+  lockout;
+  writeln ('Enter "', term_end.str:term_end.len, '" to exit terminal mode.');
+  unlockout;
+
+  while term do begin                  {keep looping as long as in terminal mode}
+    lockout;
+    string_prompt (string_v('> '));    {show terminal mode prompt}
+    newline := false;
+    unlockout;
+
+    string_readin (obuf);              {get input line from user}
+    if string_equal (obuf, term_end) then begin {end terminal mode ?}
+      term := false;                   {exit terminal mode}
+      return;
+      end;
+    string_append1 (obuf, chr(char_cr)); {add CR at end of text line}
+    send_obuf;                         {send contents of OBUF}
+    end;                               {back to get next line from user}
+  end;
+{
+****************************************************************************
+*
 *   Start of main routine.
 }
 begin
@@ -448,6 +550,9 @@ begin
   conf := [];                          {init configuration options to default}
   usb := false;                        {init to using serial line, not USB}
   sio := 1;                            {init to default serial line number}
+  showout := false;                    {init to not show sent bytes}
+  term := false;                       {init to not in terminal mode}
+  string_vstring (term_end, '!!!'(0), -1); {string to end terminal mode}
 
   sys_envvar_get (string_v('SIO_DEFAULT'), parm, stat);
   if not sys_error(stat) then begin
@@ -634,6 +739,7 @@ done_opts:                             {done with all the command line options}
   string_vstring (prompt, ': '(0), -1); {set command prompt string}
 
 loop_iline:                            {back here each new input line}
+  if term then terminal_get;           {in terminal mode ?}
   sys_wait (0.100);
   lockout;
   string_prompt (prompt);              {prompt the user for a command}
@@ -662,7 +768,7 @@ loop_iline:                            {back here each new input line}
   sys_error_none (stat);
   string_upcase (opt);
   string_tkpick80 (opt,                {pick command name from list}
-    '? HELP Q S H SQ SHOW',
+    '? HELP Q S H SQ SHOW TERM',
     pick);
   case pick of
 {
@@ -677,6 +783,7 @@ loop_iline:                            {back here each new input line}
   writeln ('H hex ... hex - Data bytes, tokens interpreted in hexadecimal');
   writeln ('val ... val - Integer bytes or strings, strings must be quoted, "" or ''''');
   writeln ('SHOW [out]  - Enable/disable showing debug output');
+  writeln ('TERM [on/off] - Terminal mode versus character mode');
   writeln ('SQ          - Emit square wave at 1/2 baud frequency');
   writeln ('Integer tokens have the format: [base#]value with decimal default.');
   unlockout;
@@ -723,7 +830,7 @@ loop_hex:                              {back here each new hex value}
   showout := false;                    {init all debug output to disabled}
 
   while true do begin                  {back here to get each parameter}
-    string_token (buf, p, parm, stat);   {try to get another parameter}
+    string_token (buf, p, parm, stat); {try to get another parameter}
     if string_eos(stat) then goto done_cmd; {exhausted the command line ?}
     string_upcase (parm);              {make upper case for token matching}
     string_tkpick80 (parm,
@@ -737,6 +844,33 @@ otherwise
       goto err_cmparm;
       end;
     end;
+  end;
+{
+*   TERM [on/off]
+}
+8: begin
+  string_token (buf, p, parm, stat);   {try to get command option}
+  if not string_eos(stat) then begin   {other than end of command ?}
+    if sys_error(stat) then goto err_cmparm; {hard error ?}
+    string_upcase (parm);              {make upper case for keyword matching}
+    string_tkpick80 (parm,             {pick keyword from list}
+      'ON OFF',
+      pick);
+    case pick of                       {which keyword is it ?}
+1:    term := true;                    {ON}
+2:    term := false;                   {OFF}
+otherwise
+      goto err_cmparm;
+      end;
+    end;
+
+  lockout;
+  write ('Terminal mode ');
+  if term
+    then write ('ON, not character mode')
+    else write ('OFF, in character mode');
+  writeln;
+  unlockout;
   end;
 {
 *   Unrecognized command.
@@ -777,31 +911,7 @@ loop_tk:                               {back here to get each new data token}
 
 done_cmd:                              {done processing the current command}
   if sys_error(stat) then goto err_cmparm; {handle error, if any}
-  if obuf.len <= 0 then goto loop_iline; {nothing to send, back for next command ?}
-
-  if repout then begin                 {repeat output until user stops ?}
-    lockout;
-    string_prompt (string_v('Press ENTER to stop output: '));
-    newline := false;
-    unlockout;
-    end;
-  sys_thread_create (                  {start thread to send OBUF contents}
-    addr(thread_send),                 {address of thread root routine}
-    0,                                 {argument passed to thread (unused)}
-    thid_send,                         {returned thread ID}
-    stat);
-  sys_error_abort (stat, '', '', nil, 0);
-  sys_thread_event_get (thid_send, ev_send, stat); {get thread exit event}
-  sys_error_abort (stat, '', '', nil, 0);
-  if repout then begin                 {repeating output until user stops ?}
-    string_readin (parm);              {wait for user to hit ENTER}
-    newline := true;
-    repout := false;                   {stop the repeated sending}
-    end;
-  sys_event_wait (ev_send, stat);      {wait for sending thread to exit}
-  sys_error_abort (stat, '', '', nil, 0);
-  sys_event_del_bool (ev_send);        {delete the thread-exit event}
-
+  send_obuf;                           {send contents of OBUF}
   goto loop_iline;                     {back to process next command input line}
 
 err_cmparm:                            {parameter error, STAT set accordingly}
