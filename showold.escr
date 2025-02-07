@@ -1,0 +1,39 @@
+//   SHOWOLD date
+//
+//   Show all the files in the current tree that are older than DATE.  The
+//   format for DATE is YYYY/MM/DD.HH:MM:SS.  Anything past the first slash may
+//   be omitted.
+//
+const dtmfmt string = 'local year str "/" mnum str "/" day str "." hour str ":" min str ":" sec'
+var new thdate time = [arg 1]
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Subroutine DODIR
+//
+//   Process all the files in the current directory and any of its
+//   sub-directories.
+//
+subroutine dodir
+  var local olddir string = [dir]
+
+  loop dir "."
+    pick one by [dent type]
+      option "DIR"
+        dir [dent]
+        call dodir:+1        //process subdirectory recursively
+        dir olddir
+      option "FILE"
+        if [< [dent dtm] thdate] then //older than the threshold ?
+          show [date [dent dtm] [chars dtmfmt]] " " [dent tnam]
+          endif
+      endpick
+    endloop
+
+  endsub
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//   Start of main routine.
+//
+call dodir
