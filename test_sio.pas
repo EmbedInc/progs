@@ -202,7 +202,10 @@ begin
     if sys_event_wait_tout (ev_recv, tbreak, stat)
       then begin                       {timeout, break detected}
         if recv then begin             {new stuff written since last break ?}
-          if newline then begin        {input is at start of line ?}
+          if
+              newline and              {input is at start of line ?}
+              (not term)               {not in terminal mode ?}
+              then begin
             lockout;
             writeln;                   {write a blank line to show the break}
             unlockout;
@@ -347,13 +350,15 @@ loop:                                  {back here each new response opcode}
   if term then begin                   {in terminal mode ?}
     if b = char_cr then begin          {CR, ends input text line}
       lockout;
-      writeln (ibuf.str:ibuf.len);     {show accumulated input line}
+      writeln;                         {end the current line}
       unlockout;
-      ibuf.len := 0;                   {reset received input line to empty}
       goto loop;                       {back for next input character}
       end;
-    if b < 32 then goto loop;          {ignore control characters}
-    string_append1 (ibuf, chr(b));     {add this char to end of received line}
+    if b < 32 then goto loop;          {ignore all other control characters}
+    ibuf.str[1] := chr(b);             {put this character into var string}
+    ibuf.len := 1;
+    string_prompt (ibuf);              {show this received character to the user}
+    ibuf.len := 0;
     goto loop;
     end;
 
@@ -512,24 +517,20 @@ begin
 *   Process user input in terminal mode.
 *
 *   In terminal mode, user input lines are sent exactly as received, with
-*   a carriage return added at the end.  The special input of a single ESC
-*   character ends terminal mode, back to character mode.  User inputs are
-*   only interpreted as commands in character mode.
+*   a carriage return added at the end.  User inputs are only interpreted as
+*   commands in character mode.
 }
 procedure terminal_get;
 
 begin
   lockout;
   writeln ('Enter "', term_end.str:term_end.len, '" to exit terminal mode.');
+  writeln;
+  newline := true;
   unlockout;
 
   while term do begin                  {keep looping as long as in terminal mode}
     sys_wait (0.100);                  {time for response to previous command}
-    lockout;
-    string_prompt (string_v('> '));    {show terminal mode prompt}
-    newline := false;
-    unlockout;
-
     string_readin (obuf);              {get input line from user}
     if string_equal (obuf, term_end) then begin {end terminal mode ?}
       term := false;                   {exit terminal mode}
