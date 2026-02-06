@@ -44,6 +44,9 @@ begin
       if ent_p^.desc_p <> nil then begin
         write ('  - ', ent_p^.desc_p^.str:ent_p^.desc_p^.len);
         end;
+      if ent_p^.next_p = nil then begin {this entry not ended ?}
+        write (' (ongoing)');
+        end;
       writeln;
       ent_p := ent_p^.nextcust_p;      {to next log entry for this customer}
       end;
