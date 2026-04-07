@@ -92,6 +92,7 @@ call :gitget picprg pprog
 call :gitget picprg pptst
 call :gitget pntcalc
 call :gitget progs
+call :gitget qprot rdy2t
 call :gitget qprot u1ex
 call :gitget ray
 call :gitget rend core
