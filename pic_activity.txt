@@ -1,13 +1,23 @@
                            Program PIC_ACTIVITY
-                             16 January 2009
+                                3 May 2026
 
+pic_activity [options]
 
-pic_activity
+Make a list of firmware and hardware development activity by quarter.
 
-Make a list of recent PIC firmware development activity by quarter.
-Activity is determined by HEX files and their time stamps in the SRC
-directory.  Activity is listed by quarter year, including the current
-quarter and the previous four complete quarters.
+Firmware activity is determined by the time stamps of HEX files in the HEX
+subdirectory of firmware source code GIT repositories.  Hardware activity
+is determined by the time stamps of board files in the ~/eagle/proj
+directory.  If a subdirectory contains a schematic file but not a board
+file, the time stamp of the schematic file is used.
 
 For each quarter, the released firmware versions created that quarter are
 shown sorted by source directory, then project name, then version number.
+
+The command line options are:
+
+  -Y year
+
+    List only activity within the specified year.  The default is to list
+    activity in the previous whole calender year and the current partial
+    year.

@@ -8,7 +8,7 @@ program pic_activity;
 
 const
   max_ver = 100;                       {max versions of a project per quarter}
-  nquart = 5;                          {N quarters to build info for starting with curr}
+  max_msg_args = 2;                    {max arguments we can pass to a message}
 
 type
   ptype_k_t = (                        {project type, listed here in sort order}
@@ -25,21 +25,39 @@ type
     ver: array[1 .. max_ver] of sys_int_machine_t; {version numbers activity this quarter}
     end;
 
+  quart_p_t = ^quart_t;
   quart_t = record                     {activity info about one quarter year}
+    next_p: quart_p_t;                 {to next quarter, NIL at end of list}
     start: sys_clock_t;                {start time of this quarter}
+    end: sys_clock_t;                  {end time of this quarter}
     proj_p: proj_p_t;                  {points to list of projects this quarter}
     end;
 
 var
-  q: array[1 .. nquart] of quart_t;    {info on quarters from current back}
   tzone: sys_tzone_k_t;                {our time zone}
   hours_west: real;                    {our time zone hours west of CUT}
   daysave: sys_daysave_k_t;            {our time zone daylight savings strategy}
   date: sys_date_t;                    {scratch date descriptor}
-  ii, jj: sys_int_machine_t;           {scratch integers and loop counters}
+  date_end: sys_date_t;                {ignore activity after this date/time}
+  time: sys_clock_t;                   {scratch time}
+  qlist_p: quart_p_t;                  {to list of quarters, guaranteed not empty}
+  qlist_last_p: quart_p_t;             {to last quarters list entry}
+  quart_p: quart_p_t;                  {to list entry for current quarter}
+  ii: sys_int_machine_t;               {scratch integers and loop counters}
   tk:                                  {scratch token}
     %include '(cog)lib/string80.ins.pas';
-  proj_p: proj_p_t;                    {pointer to current project in list}
+
+  opt:                                 {upcased command line option}
+    %include '(cog)lib/string_treename.ins.pas';
+  parm:                                {command line option parameter}
+    %include '(cog)lib/string_treename.ins.pas';
+  pick: sys_int_machine_t;             {number of token picked from list}
+  msg_parm:                            {references arguments passed to a message}
+    array[1..max_msg_args] of sys_parm_msg_t;
+  stat: sys_err_t;                     {completion status}
+
+label
+  next_opt, err_parm, parm_bad, done_opts;
 {
 ********************************************************************************
 *
@@ -202,6 +220,26 @@ flip:                                  {out of order, flip the order}
 {
 ********************************************************************************
 *
+*   Subroutine SORT_QUARTS
+*
+*   Sort the all the projects within each quarter in the quarters list.
+}
+procedure sort_quarts;
+  val_param; internal;
+
+var
+  q_p: quart_p_t;                      {to current quarter in quarters list}
+
+begin
+  q_p := qlist_p;                      {init to first quarter in the list}
+  while q_p <> nil do begin            {once for each quarters list entry}
+    sort_projs (q_p^.proj_p);          {sort the projects within this quarter}
+    q_p := q_p^.next_p;                {to next quarter in the list}
+    end;                               {back to process this next quarter}
+  end;
+{
+********************************************************************************
+*
 *   Subroutine ADD_ACT (LIB, PROJ, PTYPE, VER, TIME)
 *
 *   Add a specific item of activity to the collected data if appropriate.  LIB
@@ -220,19 +258,25 @@ procedure add_act (                    {add activity to the collected list}
   val_param; internal;
 
 var
-  qn: sys_int_machine_t;               {index for current quarter}
+  q_p: quart_p_t;                      {to current quarter in quarters list}
   comp: sys_compare_k_t;               {result of time comparison}
-  proj_p: proj_p_t;                    {points to project in list of curr quarter}
+  proj_p: proj_p_t;                    {points to project within current quarter}
 
 label
-  next_proj;
+  next_proj, next_quarter;
 
 begin
-  for qn := 1 to nquart do begin       {scan thru the quarters backwards in time}
-    comp := sys_clock_compare (time, q[qn].start); {compare FW time to start of this quarter}
-    if comp = sys_compare_lt_k then next; {created before this quarter ?}
-
-    proj_p := q[qn].proj_p;            {init pointer to first project this quarter}
+  q_p := qlist_p;                      {to first quarter in list}
+  while q_p <> nil do begin            {scan forwards thru the quarters}
+    comp := sys_clock_compare (time, q_p^.start); {compare time to start of this quarter}
+    if comp = sys_compare_lt_k then exit; {activity is before this quarter ?}
+    comp := sys_clock_compare (time, q_p^.end); {compare time to after of this quarter}
+    if comp <> sys_compare_lt_k        {activity is after this quarter ?}
+      then goto next_quarter;
+    {
+    *   The activity is within the current quarter.
+    }
+    proj_p := q_p^.proj_p;             {init pointer to first project this quarter}
     while proj_p <> nil do begin       {scan the list of existing projects}
       if not string_equal(proj_p^.lib, lib) {source library names don't match ?}
         then goto next_proj;
@@ -240,15 +284,18 @@ begin
         then goto next_proj;
       if proj_p^.ptype <> ptype        {project type doesn't match ?}
         then goto next_proj;
-      exit;                            {found existing entry for this firmware}
+      exit;                            {found existing entry for this activity}
 next_proj:                             {curr project doesn't match, on to next}
       proj_p := proj_p^.next_p;
       end;
-
+    {
+    *   PROJ_P points to the existing project this new activity is for, or is
+    *   NIL to indicate that there is no existing project for this activity.
+    }
     if proj_p = nil then begin         {no existing entry for this project ?}
       sys_mem_alloc (sizeof(proj_p^), proj_p); {create new project descriptor}
-      proj_p^.next_p := q[qn].proj_p;  {link at start of list for this quarter}
-      q[qn].proj_p := proj_p;
+      proj_p^.next_p := q_p^.proj_p;   {link at start of list for this quarter}
+      q_p^.proj_p := proj_p;
       proj_p^.ptype := ptype;          {set project type}
       proj_p^.name.max := size_char(proj_p^.name.str); {set project name}
       string_copy (proj, proj_p^.name);
@@ -261,33 +308,39 @@ next_proj:                             {curr project doesn't match, on to next}
       proj_p^.nver := proj_p^.nver + 1; {count one more version in this list}
       proj_p^.ver[proj_p^.nver] := ver; {add this version number to the list}
       end;
-    exit;                              {no need to go back to previous quarters}
-    end;                               {back to check the previous quarter}
+
+next_quarter:                          {skip here to advance to the next quarter}
+    q_p := q_p^.next_p;                {to next quarter}
+    end;                               {back to check the next quarter}
   end;
 {
 ********************************************************************************
 *
-*   Subroutine SCAN_TREE_SRC (SRCPATH)
+*   Subroutine SCAN_TREE_FW (SRCPATH)
 *
-*   Scan the directory tree starting at SRCPATH within the (cog)src directory.
-*   Information about any HEX files with modified dates within the quarters of
-*   interest will be added to the collected data.
+*   Scan the directory tree (cog)source looking for HEX files.  Except for some
+*   old projects, the released firmware version HEX files are within the HEX
+*   subdirectory within the source code repository.
+*
+*   HEX files with modified dates within any of the quarters within the quarters
+*   will be added to the activity data.
 *
 *   This routine calls itself recursively to process subordinate directories.
 }
-procedure scan_tree_src (              {scan directory tree within SRC directory}
+procedure scan_tree_fw (               {scan looking for firmware projects}
   in      srcpath: univ string_var_arg_t); {path within SRC directory of the tree}
   val_param; internal;
 
 var
-  conn: file_conn_t;                   {connection to the top directory of the tree}
-  dir: string_treename_t;              {scratch pathname}
   lib: string_treename_t;              {current source library name}
   ent: string_leafname_t;              {directory entry name}
+  conn: file_conn_t;                   {connection to the top directory of the tree}
   finfo: file_info_t;                  {extra info about current directory entry}
-  tk: string_leafname_t;               {scratch token}
-  i: sys_int_machine_t;                {scratch integer}
-  c: char;                             {scratch character}
+  finfo2: file_info_t;                 {scratch extra info about a file}
+  dir: string_treename_t;              {scratch pathname}
+  tk: string_treename_t;               {scratch token}
+  lnam: string_leafname_t;             {last entry of pathname}
+  name: string_var80_t;                {firmware name}
   ver: sys_int_machine_t;              {firmware version number}
   stat: sys_err_t;                     {completion status}
 
@@ -299,11 +352,13 @@ begin
   lib.max := size_char(lib.str);
   ent.max := size_char(ent.str);
   tk.max := size_char(tk.str);
+  lnam.max := size_char(lnam.str);
+  name.max := size_char(name.str);
 
   string_copy (srcpath, lib);          {save source library name for this subdir}
   string_upcase (lib);
 
-  string_vstring (dir, '(cog)src'(0), -1); {init directory to SRC root}
+  string_vstring (dir, '(cog)source'(0), -1); {init directory to SOURCE root}
   if srcpath.len > 0 then begin        {add subdirectory path}
     string_append1 (dir, '/');
     string_append (dir, srcpath);
@@ -334,39 +389,58 @@ file_type_dir_k: begin
     string_append1 (dir, '/');
     end;
   string_append (dir, ent);            {add subdirectory name}
-  scan_tree_src (dir);                 {handle this subdirectory recursively}
+  scan_tree_fw (dir);                  {handle this subdirectory recursively}
   end;
 {
-*   Directory entry is a ordinary file.
+*   Directory entry is an ordinary file.
 }
 file_type_data_k: begin
   if lib.len <= 0 then goto done_ent;  {ignore files in top level (shouldn't be there)}
-  if ent.len < 5 then goto done_ent;   {name too short to be HEX file}
+  if ent.len < 6 then goto done_ent;   {name too short to be xn.HEX file}
   string_upcase (ent);                 {make file name upper case}
   string_substr (ent, ent.len - 3, ent.len, tk); {get last 4 file name chars}
   if not string_equal (tk, string_v('.HEX')) then goto done_ent; {not a HEX file ?}
   ent.len := ent.len - 4;              {truncate ".HEX" part of file name}
-  i := ent.len;                        {init index of last non-digit char}
-  while true do begin                  {scan backwards looking for last non-digit}
-    c := ent.str[i];                   {get this file name character}
-    if (c < '0') or (c > '9') then exit; {this char is not a digit ?}
-    i := i - 1;                        {go to previous character}
-    if i <= 0 then exit;               {no more chars ?}
-    end;
-  if i = ent.len then goto done_ent;   {no version number ?}
-  if i <= 0 then goto done_ent;        {all digits, no project name ?}
-  string_substr (ent, i+1, ent.len, tk); {get version number part of file name}
-  ent.len := i;                        {truncate firmware version number from file name}
-  string_t_int (tk, ver, stat);        {make integer version number}
-  if sys_error_check (stat, '', '', nil, 0) then goto done_ent;
+  get_version (ent, name, ver);        {extract firmware name and version number}
+  if ver = 0 then goto done_ent;       {not version number ?}
+  if name.len <= 0 then goto done_ent; {no firmware name ?}
   {
-  *   A new HEX file was found for a released version of firmware.  ENT contains
-  *   the upper case project name from the HEX file, and VER is the version
-  *   number.
+  *   A new HEX file was found for a released version of firmware.  NAME
+  *   contains the upper case project name from the HEX file, and VER is the
+  *   version number.
   }
+  string_copy (lib, dir);              {init source library name to use}
+  string_pathname_split (dir, tk, lnam); {strip off leaf directory name into LNAM}
+  if string_equal (lnam, string_v('HEX'(0))) then begin {in HEX subdirectory ?}
+    string_copy (tk, dir);             {use source lib name with HEX stripped off}
+    end;
+  string_pathname_split (dir, tk, lnam); {strip off new leaf directory name into LNAM}
+  if string_equal (lnam, name) then begin {dir name matches HEX file firware name ?}
+    string_copy (tk, dir);             {use lib name with firmware name stripped off}
+    end;
+  {
+  *   DIR is set to the top level customer directory name within SOURCE.  Now
+  *   whether the same HEX file exists in the SRC/<dir> directory.  If so, the
+  *   oldest of the two modified times is used.
+  }
+  string_vstring (tk, '(cog)source/'(0), -1); {init to fixed part of pathname}
+  string_append (tk, dir);             {into customer directory}
+  string_append1 (tk, '/');
+  string_append (tk, ent);             {HEX file name}
+  file_info (                          {try to get info about HEX file in SOURCE dir}
+    tk,                                {file name}
+    [file_iflag_dtm_k],                {request last modified time}
+    finfo2,                            {return info, if available}
+    stat);
+  if not sys_error(stat) then begin    {found the file, got the info ?}
+    if sys_clock_compare (finfo2.modified, finfo.modified) = sys_compare_lt_k then begin
+      finfo.modified := finfo2.modified; {use the earlier timestamp}
+      end;
+    end;
+
   add_act (                            {collect this firmware version info if appropriate}
-    lib,                               {source library, upper case}
-    ent,                               {project name, upper case}
+    dir,                               {source library, upper case}
+    name,                              {project name, upper case}
     ptype_fw_k,                        {this is a firmware project}
     ver,                               {firmware version number}
     finfo.modified);                   {creation time}
@@ -521,80 +595,244 @@ done_ent:                              {done processing this directory entry}
 {
 ********************************************************************************
 *
+*   Subroutine SHOW_VERSIONS (PROJ)
+*
+*   Write the version numbers of the project PROJ.  Three or more successive
+*   versions is shown as a range, not enumerated version numbers.
+}
+procedure show_versions (              {show list of versions}
+  in      proj: proj_t);               {project to show list of versions of}
+  val_param; internal;
+
+var
+  ind: sys_int_machine_t;              {version list index}
+  ver: sys_int_machine_t;              {current version}
+  range: boolean;                      {within a sequential range}
+  rstart, rend: sys_int_machine_t;     {start and end of the current range}
+{
+******************************
+*
+*   Subroutine SHOW_RANGE
+*   This subroutine is private to SHOW_VERSIONS
+*
+*   Show the current range of versions, if any.  The will be no range in
+*   progress when this routine returns.
+}
+procedure show_range;
+  val_param; internal;
+
+begin
+  if not range then return;            {no range, nothing to do ?}
+  range := false;                      {the active range will be ended}
+
+  write (' ', rstart);                 {show start of range number}
+  if rend = rstart then return;        {range was for single number ?}
+
+  if rend = (rstart + 1) then begin    {range is for two consective numbers ?}
+    write (' ', rend);                 {show the second number}
+    return;
+    end;
+
+  write ('-', rend);                   {show range to ending value}
+  end;
+{
+******************************
+*
+*   Start of main code for SHOW_VERSIONS.
+}
+begin
+  range := false;                      {init to not within a range}
+
+  for ind := 1 to proj.nver do begin   {once for each version}
+    ver := proj.ver[ind];              {get this version into VER}
+    if range then begin                {there is an existing range ?}
+      if ver = (rend + 1) then begin   {this version extends the range ?}
+        rend := ver;
+        next;
+        end;
+      show_range;                      {show and end the existing range}
+      end;
+    range := true;                     {start new range with this version}
+    rstart := ver;
+    rend := ver;
+    end;
+
+  show_range;                          {show any unfinished range}
+  end;
+{
+********************************************************************************
+*
+*   Subroutine SHOW_QUARTER (Q)
+*
+*   Show the activity for the quarter described by Q.
+}
+procedure show_quarter (               {show activity for a quarter}
+  in      q: quart_t);                 {quarter to show activity for}
+  val_param; internal;
+
+var
+  date: sys_date_t;                    {scratch date descriptor}
+  proj_p: proj_p_t;                    {to current project}
+
+begin
+  sys_clock_to_date (                  {make start date of this quarter}
+    q.start, tzone, hours_west, daysave, date);
+  writeln;
+  writeln (date.year:4, ' Q', ((date.month div 3) + 1));
+
+  proj_p := q.proj_p;                  {init to first project in list for this quarter}
+  while proj_p <> nil do begin         {scan the projects list for this quarter}
+    write ('  ', proj_p^.lib.str:proj_p^.lib.len);
+    case proj_p^.ptype of
+ptype_fw_k: begin                      {firmware}
+        write (' Firmware');
+        end;
+ptype_hw_k: begin                      {hardware}
+        write (' Hardware');
+        end;
+otherwise
+      writeln;
+      writeln ('INTERNAL ERROR: Unexpected project type ID of ', ord(proj_p^.ptype), ' found.');
+      sys_bomb;
+      end;
+
+    write (' ', proj_p^.name.str:proj_p^.name.len);
+    if                                 {write list of versions ?}
+        (proj_p^.nver <> 1) or         {not just one version ?}
+        (proj_p^.ver[1] <> 0) or       {that version is not 0 ?}
+        (proj_p^.ptype <> ptype_hw_k)  {this is not a hardware project ?}
+        then begin
+      show_versions (proj_p^);         {show the list of versions of this project}
+      end;
+    writeln;
+    proj_p := proj_p^.next_p;          {advance to next project this quarter}
+    end;
+  end;
+{
+********************************************************************************
+*
 *   Start of main routine.
 }
 begin
 {
-*   Make the date for the start of the current quarter.
+*   Initialize before reading the command line.
 }
+  string_cmline_init;                  {init for reading the command line}
+  {
+  *   Initialize time to start of the previous year.
+  }
   sys_timezone_here (tzone, hours_west, daysave); {get info about our timezone}
   sys_clock_to_date (                  {make expanded date from current time}
     sys_clock,                         {current time}
     tzone, hours_west, daysave,        {timezone info}
-    date);                             {returned date}
-  date.day := 0;                       {back to start of current month}
+    date_end);                         {returned date}
+
+  date := date_end;                    {make default activity starting date/time}
+  date.year := date.year - 1;          {go back to start of previous year}
+  date.month := 0;
+  date.day := 0;
   date.hour := 0;
   date.minute := 0;
   date.second := 0;
   date.sec_frac := 0.0;
-  date.month := (date.month div 3) * 3; {back to start of current quarter}
 {
-*   Init the data for each quarter.
+*   Back here each new command line option.
 }
-  for ii := 1 to nquart do begin       {once for each quarter to gather info for}
-    q[ii].start := sys_clock_from_date(date); {set start time of this quarter}
-    q[ii].proj_p := nil;               {init to no projects this quarter}
-    if date.month < 3
-      then begin                       {back to last quarter of previous year}
-        date.year := date.year - 1;
-        date.month := 9;
+next_opt:
+  string_cmline_token (opt, stat);     {get next command line option name}
+  if string_eos(stat) then goto done_opts; {exhausted command line ?}
+  sys_error_abort (stat, 'string', 'cmline_opt_err', nil, 0);
+  string_upcase (opt);                 {make upper case for matching list}
+  string_tkpick80 (opt,                {pick command line option name from list}
+    '-Y',
+    pick);                             {number of keyword picked from list}
+  case pick of                         {do routine for specific option}
+{
+*   -Y year
+}
+1: begin
+  string_cmline_token_int (ii, stat);  {get year into II}
+  if sys_error(stat) then goto err_parm;
+  date.year := ii;                     {set starting year}
+  date_end.year := date.year + 1;      {set ending date/time}
+  date_end.month := 0;
+  date_end.day := 0;
+  date_end.hour := 0;
+  date_end.minute := 0;
+  date_end.second := 0;
+  date_end.sec_frac := 0.0;
+  end;
+{
+*   Unrecognized command line option.
+}
+otherwise
+    string_cmline_opt_bad;             {unrecognized command line option}
+    end;                               {end of command line option case statement}
+
+err_parm:                              {jump here on error with parameter}
+  string_cmline_parm_check (stat, opt); {check for bad command line option parameter}
+  goto next_opt;                       {back for next command line option}
+
+parm_bad:                              {jump here on got illegal parameter}
+  string_cmline_reuse;                 {re-read last command line token next time}
+  string_cmline_token (parm, stat);    {re-read the token for the bad parameter}
+  sys_msg_parm_vstr (msg_parm[1], parm);
+  sys_msg_parm_vstr (msg_parm[2], opt);
+  sys_message_bomb ('string', 'cmline_parm_bad', msg_parm, 2);
+
+done_opts:                             {done with all the command line options}
+{
+*   Create the quarters list.  The activity for each quarter is initialized to
+*   empty.  At least one list entry is always created.  Put another way, the
+*   quarters list is guaranteed not to be empty for the rest of the code after
+*   this section.
+}
+  qlist_p := nil;                      {init the quarters list to empty}
+  qlist_last_p := nil;
+
+  time := sys_clock_from_date(date);   {init current start of quarter time}
+  while true do begin                  {advance thru quarters until DATE_END}
+    sys_mem_alloc (sizeof(quart_p^), quart_p); {create descriptor for this quarter}
+    quart_p^.next_p := nil;            {init to no following list entries}
+    quart_p^.start := time;            {set start time for this quarter}
+    date.month := date.month + 3;      {advance to start of next quarter}
+    if date.month > 11 then begin      {past end of year}
+      date.month := date.month - 12;   {to next year}
+      date.year := date.year + 1;
+      end;
+    time := sys_clock_from_date(date); {make start time of next quarter}
+    quart_p^.end := time;              {save ending time for this quarter}
+    quart_p^.proj_p := nil;            {init to no projects in this quarter}
+
+    if qlist_last_p = nil              {link this quarter to end of quarters list}
+      then begin
+        qlist_p := quart_p;
         end
-      else begin                       {back to previous quarter in same year}
-        date.month := date.month - 3;
+      else begin
+        qlist_last_p^.next_p := quart_p;
         end
       ;
-    end;                               {back to init data for previous quarter}
+    qlist_last_p := quart_p;
+
+    if                                 {reached end date ?}
+        (date.year >= date_end.year) and
+        (date.month >= date_end.month)
+      then exit;
+    end;                               {back to create list entry for next quarter}
 {
 *   Gather the data.
 }
   tk.len := 0;
-  scan_tree_src (tk);                  {look in SRC directory for firmware activity}
+  scan_tree_fw (tk);                   {look for new firmware versions}
   scan_tree_hw (tk);                   {look for hardware design activity}
+
+  sort_quarts;                         {sort the activity for each quarter}
 {
 *   Show the results.
 }
-  for ii := nquart downto 1 do begin   {scan forwards thru the quarters}
-    sys_clock_to_date (q[ii].start, tzone, hours_west, daysave, date); {make Q start date}
-    writeln;
-    writeln (date.year:4, ' Q', ((date.month div 3) + 1));
-    sort_projs (q[ii].proj_p);         {sort the projects of this quarter}
-    proj_p := q[ii].proj_p;            {init to first project in list for this quarter}
-    while proj_p <> nil do begin       {scan the projects list for this quarter}
-      write ('  ', proj_p^.lib.str:proj_p^.lib.len);
-      case proj_p^.ptype of
-ptype_fw_k: begin                      {firmware}
-          write (' Firmware');
-          end;
-ptype_hw_k: begin                      {hardware}
-          write (' Hardware');
-          end;
-otherwise
-        writeln;
-        writeln ('INTERNAL ERROR: Unexpected project type ID of ', ord(proj_p^.ptype), ' found.');
-        sys_bomb;
-        end;
-      write (' ', proj_p^.name.str:proj_p^.name.len);
-      if                               {write list of versions ?}
-          (proj_p^.nver <> 1) or       {not just one version ?}
-          (proj_p^.ver[1] <> 0) or     {that version is not 0 ?}
-          (proj_p^.ptype <> ptype_hw_k) {this is not a hardware project ?}
-          then begin
-        for jj := 1 to proj_p^.nver do begin
-          write (' ', proj_p^.ver[jj]);
-          end;
-        end;
-      writeln;
-      proj_p := proj_p^.next_p;        {advance to next project this quarter}
-      end;
+  quart_p := qlist_p;                  {init to first quarter in list}
+  while quart_p <> nil do begin        {scan forwards thru the quarters}
+    show_quarter (quart_p^);           {show the activity this quarter}
+    quart_p := quart_p^.next_p;        {to next quarter in the list}
     end;                               {back to do next quarter}
   end.
