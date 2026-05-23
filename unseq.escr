@@ -21,5 +21,5 @@ block
   if [> seq 1] then
     set seq [seq snam aft -1]
     endif
-  show "The next sequence number will be " seq ", version " ver
+  show "Next build will be version " ver " sequence " seq "."
   endblock
